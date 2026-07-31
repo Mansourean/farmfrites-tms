@@ -1,0 +1,26 @@
+@layer base {
+  body {
+    @apply bg-surface text-text-primary antialiased;
+    font-feature-settings: "cv11", "ss01";
+  }
+
+  ::selection {
+    @apply bg-brand-100 text-brand-700;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #d8d8d6 transparent;
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
