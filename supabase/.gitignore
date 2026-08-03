@@ -1,0 +1,2 @@
+# Supabase CLI local cache/state (project ref, pooler URL, service versions) — never commit.
+.temp/

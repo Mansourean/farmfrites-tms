@@ -20,7 +20,7 @@ export function AppLayout() {
             <TopBar onMenuClick={() => setMobileNavOpen(true)} />
             <div className="flex flex-1 overflow-hidden">
               <Sidebar open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
-              <main className="flex flex-1 flex-col overflow-hidden bg-white">
+              <main className="flex flex-1 flex-col overflow-hidden bg-surface-canvas">
                 <Outlet />
               </main>
             </div>

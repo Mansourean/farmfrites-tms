@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
+import { useToast } from '../../context/ToastContext'
 import { ROLE_LABELS, ROLE_OPTIONS } from '../../data/roles'
 import { Avatar } from '../../components/ui/Avatar'
 import { Icon } from '../../components/ui/Icon'
@@ -7,6 +8,10 @@ import { getInitials } from '../../utils/initials'
 
 const inputClass =
   'rounded-md border border-border-strong bg-white px-2.5 py-[7px] text-[13px] text-text-primary outline-none focus:border-brand-400'
+
+// Must match the Edge Function's validation (supabase/functions/admin-users/index.ts)
+// exactly — usernames are mapped 1:1 to synthetic Supabase Auth emails.
+const USERNAME_RE = /^[a-z0-9._-]{3,32}$/
 
 function Field({ label, children }) {
   return (
@@ -42,18 +47,37 @@ function UserFormModal({ user, isUsernameTaken, onSave, onClose }) {
   const [password, setPassword] = useState('')
   const [role, setRole] = useState(user?.role ?? ROLE_OPTIONS[0])
   const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!fullName.trim() || !username.trim() || (!isEdit && !password.trim())) {
       setError('Please fill in every field.')
+      return
+    }
+    if (!USERNAME_RE.test(username.trim().toLowerCase())) {
+      setError('Username must be 3-32 characters: lowercase letters, numbers, dots, underscores, or hyphens.')
       return
     }
     if (isUsernameTaken(username, user?.id)) {
       setError('That username is already in use.')
       return
     }
-    onSave({ fullName: fullName.trim(), username: username.trim(), role, ...(isEdit ? {} : { password: password.trim() }) })
+    setError('')
+    setSubmitting(true)
+    try {
+      await onSave({
+        fullName: fullName.trim(),
+        username: username.trim().toLowerCase(),
+        role,
+        ...(isEdit ? {} : { password: password.trim() }),
+      })
+      onClose()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -68,9 +92,10 @@ function UserFormModal({ user, isUsernameTaken, onSave, onClose }) {
           <button
             type="submit"
             form="user-form"
-            className="rounded-md bg-text-primary px-3.5 py-1.5 text-[13px] font-medium text-white hover:bg-[#333331]"
+            disabled={submitting}
+            className="rounded-md bg-text-primary px-3.5 py-1.5 text-[13px] font-medium text-white hover:bg-[#333331] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isEdit ? 'Save Changes' : 'Create User'}
+            {submitting ? 'Saving…' : isEdit ? 'Save Changes' : 'Create User'}
           </button>
         </>
       }
@@ -111,14 +136,24 @@ function UserFormModal({ user, isUsernameTaken, onSave, onClose }) {
 function ResetPasswordModal({ user, onSave, onClose }) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!password.trim()) {
       setError('Enter a new password.')
       return
     }
-    onSave(password.trim())
+    setError('')
+    setSubmitting(true)
+    try {
+      await onSave(password.trim())
+      onClose()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -133,10 +168,11 @@ function ResetPasswordModal({ user, onSave, onClose }) {
           <button
             type="submit"
             form="reset-password-form"
-            className="flex items-center gap-1.5 rounded-md bg-text-primary px-3.5 py-1.5 text-[13px] font-medium text-white hover:bg-[#333331]"
+            disabled={submitting}
+            className="flex items-center gap-1.5 rounded-md bg-text-primary px-3.5 py-1.5 text-[13px] font-medium text-white hover:bg-[#333331] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Icon name="key" className="h-3.5 w-3.5" />
-            Reset Password
+            {submitting ? 'Resetting…' : 'Reset Password'}
           </button>
         </>
       }
@@ -158,6 +194,20 @@ function ResetPasswordModal({ user, onSave, onClose }) {
 }
 
 function ConfirmDeleteModal({ user, onConfirm, onClose }) {
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleConfirm = async () => {
+    setSubmitting(true)
+    try {
+      await onConfirm()
+      onClose()
+    } catch (err) {
+      setError(err.message)
+      setSubmitting(false)
+    }
+  }
+
   return (
     <ModalShell
       title="Delete User"
@@ -169,10 +219,11 @@ function ConfirmDeleteModal({ user, onConfirm, onClose }) {
           </button>
           <button
             type="button"
-            onClick={onConfirm}
-            className="rounded-md bg-[#B42318] px-3.5 py-1.5 text-[13px] font-medium text-white hover:bg-[#98190F]"
+            onClick={handleConfirm}
+            disabled={submitting}
+            className="rounded-md bg-[#B42318] px-3.5 py-1.5 text-[13px] font-medium text-white hover:bg-[#98190F] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Delete User
+            {submitting ? 'Deleting…' : 'Delete User'}
           </button>
         </>
       }
@@ -181,6 +232,7 @@ function ConfirmDeleteModal({ user, onConfirm, onClose }) {
         Are you sure you want to permanently delete <span className="font-medium text-text-primary">{user.fullName}</span>{' '}
         (@{user.username})? This cannot be undone.
       </p>
+      {error && <p className="mt-3 rounded-md bg-[#FBE7E5] px-3 py-2 text-[12.5px] font-medium text-[#B42318]">{error}</p>}
     </ModalShell>
   )
 }
@@ -219,9 +271,18 @@ function StatusBadge({ status }) {
 
 export function UserManagement({ currentUserId }) {
   const { users, createUser, updateUser, toggleUserStatus, resetPassword, deleteUser, isUsernameTaken } = useAuth()
+  const { notify } = useToast()
   const [modal, setModal] = useState(null) // { type: 'create' | 'edit' | 'reset' | 'delete', user? }
 
   const closeModal = () => setModal(null)
+
+  const handleToggleStatus = async (id) => {
+    try {
+      await toggleUserStatus(id)
+    } catch (err) {
+      notify(err.message, { type: 'error' })
+    }
+  }
 
   return (
     <div className="flex-1 overflow-auto p-4 sm:p-6">
@@ -280,7 +341,7 @@ export function UserManagement({ currentUserId }) {
                   <button
                     type="button"
                     title={user.status === 'active' ? 'Disable User' : 'Enable User'}
-                    onClick={() => toggleUserStatus(user.id)}
+                    onClick={() => handleToggleStatus(user.id)}
                     disabled={isSelf}
                     className="rounded-md p-1.5 text-text-muted hover:bg-surface-hover hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
                   >
@@ -307,34 +368,16 @@ export function UserManagement({ currentUserId }) {
           user={modal.user}
           isUsernameTaken={isUsernameTaken}
           onClose={closeModal}
-          onSave={(data) => {
-            if (modal.type === 'create') createUser(data)
-            else updateUser(modal.user.id, data)
-            closeModal()
-          }}
+          onSave={(data) => (modal.type === 'create' ? createUser(data) : updateUser(modal.user.id, data))}
         />
       )}
 
       {modal?.type === 'reset' && (
-        <ResetPasswordModal
-          user={modal.user}
-          onClose={closeModal}
-          onSave={(password) => {
-            resetPassword(modal.user.id, password)
-            closeModal()
-          }}
-        />
+        <ResetPasswordModal user={modal.user} onClose={closeModal} onSave={(password) => resetPassword(modal.user.id, password)} />
       )}
 
       {modal?.type === 'delete' && (
-        <ConfirmDeleteModal
-          user={modal.user}
-          onClose={closeModal}
-          onConfirm={() => {
-            deleteUser(modal.user.id)
-            closeModal()
-          }}
-        />
+        <ConfirmDeleteModal user={modal.user} onClose={closeModal} onConfirm={() => deleteUser(modal.user.id)} />
       )}
     </div>
   )

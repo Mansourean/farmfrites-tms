@@ -1,91 +1,171 @@
-import { createContext, useCallback, useContext, useMemo } from 'react'
-import { useLocalStorage } from '../hooks/useLocalStorage'
-import { seedUsers } from '../data/users'
-import { generateId } from '../utils/id'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext(null)
 
+// Fixed synthetic email domain for username -> Supabase Auth email mapping.
+// Must match EMAIL_DOMAIN in supabase/functions/admin-users/index.ts exactly.
+const EMAIL_DOMAIN = 'tms.farmfrites.internal'
+
+function usernameToEmail(username) {
+  return `${username.trim().toLowerCase()}@${EMAIL_DOMAIN}`
+}
+
+function mapProfile(row) {
+  return { id: row.id, fullName: row.full_name, username: row.username, role: row.role, status: row.status }
+}
+
+async function invokeAdminUsers(action, payload) {
+  const { data, error } = await supabase.functions.invoke('admin-users', { body: { action, ...payload } })
+  if (error) {
+    let message = error.message
+    try {
+      const body = await error.context?.json()
+      if (body?.error) message = body.error
+    } catch {
+      // fall back to the generic supabase-js message
+    }
+    throw new Error(message)
+  }
+  return data
+}
+
 export function AuthProvider({ children }) {
-  const [users, setUsers] = useLocalStorage('ff-tms-users', seedUsers)
-  // Session persists across refresh (until Logout) by storing just the logged-in user's id.
-  const [sessionUserId, setSessionUserId] = useLocalStorage('ff-tms-session', null)
+  const [profile, setProfile] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [users, setUsers] = useState([])
+  const signingOutRef = useRef(false)
 
-  const currentUser = useMemo(
-    () => users.find((user) => user.id === sessionUserId) ?? null,
-    [users, sessionUserId],
-  )
+  const applySession = useCallback(async (session) => {
+    if (!session) {
+      setProfile(null)
+      return
+    }
+    const { data: row } = await supabase.from('profiles').select('*').eq('id', session.user.id).single()
+    if (!row || row.status === 'disabled') {
+      if (!signingOutRef.current) {
+        signingOutRef.current = true
+        await supabase.auth.signOut()
+        signingOutRef.current = false
+      }
+      setProfile(null)
+      return
+    }
+    setProfile(mapProfile(row))
+  }, [])
 
-  const login = useCallback(
-    (username, password) => {
-      const match = users.find(
-        (user) => user.username.trim().toLowerCase() === username.trim().toLowerCase() && user.password === password,
-      )
-      if (!match) return { ok: false, error: 'Incorrect username or password.' }
-      if (match.status === 'disabled') return { ok: false, error: 'This account has been disabled. Contact an administrator.' }
-      setSessionUserId(match.id)
-      return { ok: true, user: match }
-    },
-    [users, setSessionUserId],
-  )
+  useEffect(() => {
+    let active = true
 
-  const logout = useCallback(() => setSessionUserId(null), [setSessionUserId])
+    supabase.auth.getSession().then(async ({ data }) => {
+      await applySession(data.session)
+      if (active) setLoading(false)
+    })
+
+    const { data: subscription } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!active) return
+      setLoading(true)
+      await applySession(session)
+      setLoading(false)
+    })
+
+    return () => {
+      active = false
+      subscription.subscription.unsubscribe()
+    }
+  }, [applySession])
+
+  const fetchUsers = useCallback(async () => {
+    const { data } = await supabase.from('profiles').select('*').order('full_name')
+    setUsers((data ?? []).map(mapProfile))
+  }, [])
+
+  useEffect(() => {
+    if (profile?.role === 'admin') fetchUsers()
+    else setUsers([])
+  }, [profile?.role, fetchUsers])
+
+  const login = useCallback(async (username, password) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: usernameToEmail(username),
+      password,
+    })
+    if (error || !data.session) {
+      return { ok: false, error: 'Incorrect username or password.' }
+    }
+
+    const { data: row } = await supabase.from('profiles').select('*').eq('id', data.user.id).single()
+    if (!row) {
+      await supabase.auth.signOut()
+      return { ok: false, error: 'Incorrect username or password.' }
+    }
+    if (row.status === 'disabled') {
+      await supabase.auth.signOut()
+      return { ok: false, error: 'This account has been disabled. Contact an administrator.' }
+    }
+
+    const user = mapProfile(row)
+    setProfile(user)
+    return { ok: true, user }
+  }, [])
+
+  const logout = useCallback(() => {
+    supabase.auth.signOut()
+  }, [])
 
   const createUser = useCallback(
-    (data) => {
-      const user = {
-        id: generateId('usr'),
+    async (data) => {
+      const result = await invokeAdminUsers('create', {
         fullName: data.fullName,
         username: data.username,
         password: data.password,
         role: data.role,
-        status: 'active',
-      }
-      setUsers((prev) => [...prev, user])
-      return user
+      })
+      await fetchUsers()
+      return result.user
     },
-    [setUsers],
+    [fetchUsers],
   )
 
   const updateUser = useCallback(
-    (id, patch) => {
-      setUsers((prev) => prev.map((user) => (user.id === id ? { ...user, ...patch } : user)))
+    async (id, patch) => {
+      await invokeAdminUsers('update', { id, fullName: patch.fullName, username: patch.username, role: patch.role })
+      await fetchUsers()
     },
-    [setUsers],
+    [fetchUsers],
   )
 
   const toggleUserStatus = useCallback(
-    (id) => {
-      setUsers((prev) =>
-        prev.map((user) => (user.id === id ? { ...user, status: user.status === 'active' ? 'disabled' : 'active' } : user)),
-      )
+    async (id) => {
+      const target = users.find((u) => u.id === id)
+      if (!target) return
+      const nextStatus = target.status === 'active' ? 'disabled' : 'active'
+      const { error } = await supabase.from('profiles').update({ status: nextStatus }).eq('id', id)
+      if (error) throw new Error(error.message)
+      setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, status: nextStatus } : u)))
     },
-    [setUsers],
+    [users],
   )
 
-  const resetPassword = useCallback(
-    (id, newPassword) => {
-      setUsers((prev) => prev.map((user) => (user.id === id ? { ...user, password: newPassword } : user)))
-    },
-    [setUsers],
-  )
+  const resetPassword = useCallback(async (id, newPassword) => {
+    await invokeAdminUsers('resetPassword', { id, password: newPassword })
+  }, [])
 
-  const deleteUser = useCallback(
-    (id) => {
-      setUsers((prev) => prev.filter((user) => user.id !== id))
-      setSessionUserId((prev) => (prev === id ? null : prev))
-    },
-    [setUsers, setSessionUserId],
-  )
+  const deleteUser = useCallback(async (id) => {
+    await invokeAdminUsers('delete', { id })
+    setUsers((prev) => prev.filter((u) => u.id !== id))
+  }, [])
 
   const isUsernameTaken = useCallback(
     (username, excludeId) =>
-      users.some((user) => user.id !== excludeId && user.username.trim().toLowerCase() === username.trim().toLowerCase()),
+      users.some((u) => u.id !== excludeId && u.username.trim().toLowerCase() === username.trim().toLowerCase()),
     [users],
   )
 
   const value = useMemo(
     () => ({
-      currentUser,
+      currentUser: profile,
+      loading,
       users,
       login,
       logout,
@@ -96,7 +176,7 @@ export function AuthProvider({ children }) {
       deleteUser,
       isUsernameTaken,
     }),
-    [currentUser, users, login, logout, createUser, updateUser, toggleUserStatus, resetPassword, deleteUser, isUsernameTaken],
+    [profile, loading, users, login, logout, createUser, updateUser, toggleUserStatus, resetPassword, deleteUser, isUsernameTaken],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

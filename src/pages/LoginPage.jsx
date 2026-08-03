@@ -20,7 +20,7 @@ const inputClass =
   'rounded-lg border border-border-strong bg-white px-3 py-2.5 text-[14px] text-text-primary outline-none focus:border-brand-400'
 
 export function LoginPage() {
-  const { currentUser, login } = useAuth()
+  const { currentUser, loading, login } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -28,6 +28,10 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  // Avoid flashing the login form while a persisted session is still being restored.
+  if (loading) return null
 
   if (currentUser) {
     const from = location.state?.from?.pathname
@@ -35,9 +39,11 @@ export function LoginPage() {
     return <Navigate to={target} replace />
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    const result = login(username, password)
+    setSubmitting(true)
+    const result = await login(username, password)
+    setSubmitting(false)
     if (!result.ok) {
       setError(result.error)
       return
@@ -105,10 +111,10 @@ export function LoginPage() {
 
           <button
             type="submit"
-            disabled={!username || !password}
+            disabled={!username || !password || submitting}
             className="mt-1 flex items-center justify-center gap-1.5 rounded-lg bg-text-primary py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-[#333331] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Login
+            {submitting ? 'Signing in…' : 'Login'}
           </button>
         </form>
 

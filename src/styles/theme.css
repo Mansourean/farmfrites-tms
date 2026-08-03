@@ -13,6 +13,16 @@
   --color-text-muted: #9a9a97;
   --color-text-faint: #b8b8b5;
 
+  --color-surface-canvas: #f7f8f8;
+
+  --color-sidebar: #17202a;
+  --color-sidebar-hover: #1e2933;
+  --color-sidebar-active: #232f3b;
+  --color-sidebar-border: #2a3541;
+  --color-sidebar-text: #e7eaed;
+  --color-sidebar-text-muted: #93a0ad;
+  --color-sidebar-text-faint: #5d6872;
+
   --color-brand-50: #eef2ff;
   --color-brand-100: #e0e7ff;
   --color-brand-400: #818cf8;
