@@ -10,10 +10,8 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-// Fixed synthetic email domain for username -> Supabase Auth email mapping.
-// Must match usernameToEmail() in src/context/AuthContext.jsx exactly.
-const EMAIL_DOMAIN = "tms.farmfrites.internal";
 const USERNAME_RE = /^[a-z0-9._-]{3,32}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -28,16 +26,20 @@ function json(body: unknown, status = 200) {
   });
 }
 
-function usernameToEmail(username: string) {
-  return `${username.trim().toLowerCase()}@${EMAIL_DOMAIN}`;
-}
-
 function normalizeUsername(raw: string) {
   const username = (raw ?? "").trim().toLowerCase();
   if (!USERNAME_RE.test(username)) {
     throw new Error("Username must be 3-32 characters: lowercase letters, numbers, dots, underscores, or hyphens.");
   }
   return username;
+}
+
+function normalizeEmail(raw: string) {
+  const email = (raw ?? "").trim().toLowerCase();
+  if (!EMAIL_RE.test(email)) {
+    throw new Error("Please enter a valid email address.");
+  }
+  return email;
 }
 
 Deno.serve(async (req) => {
@@ -80,13 +82,15 @@ Deno.serve(async (req) => {
   try {
     switch (action) {
       case "create": {
-        const { fullName, username: rawUsername, password, role } = body as {
+        const { fullName, username: rawUsername, email: rawEmail, password, role } = body as {
           fullName: string;
           username: string;
+          email: string;
           password: string;
           role: string;
         };
         const username = normalizeUsername(rawUsername);
+        const email = normalizeEmail(rawEmail);
         if (!fullName?.trim() || !password?.trim() || !role) {
           return json({ error: "Please fill in every field." }, 400);
         }
@@ -99,7 +103,7 @@ Deno.serve(async (req) => {
         if (existing) return json({ error: "That username is already in use." }, 409);
 
         const { data: created, error: createError } = await admin.auth.admin.createUser({
-          email: usernameToEmail(username),
+          email,
           password,
           email_confirm: true,
         });
@@ -111,6 +115,7 @@ Deno.serve(async (req) => {
           id: created.user.id,
           full_name: fullName.trim(),
           username,
+          email,
           role,
           status: "active",
         });
@@ -121,40 +126,51 @@ Deno.serve(async (req) => {
         }
 
         return json({
-          user: { id: created.user.id, fullName: fullName.trim(), username, role, status: "active" },
+          user: { id: created.user.id, fullName: fullName.trim(), username, email, role, status: "active" },
         });
       }
 
       case "update": {
-        const { id, fullName, username: rawUsername, role } = body as {
+        const { id, fullName, username: rawUsername, email: rawEmail, role } = body as {
           id: string;
           fullName: string;
           username: string;
+          email: string;
           role: string;
         };
         if (!id) return json({ error: "Missing user id." }, 400);
         const username = normalizeUsername(rawUsername);
+        const email = normalizeEmail(rawEmail);
         if (!fullName?.trim() || !role) return json({ error: "Please fill in every field." }, 400);
 
-        const { data: existing } = await admin
+        const { data: existingUsername } = await admin
           .from("profiles")
-          .select("id, username")
+          .select("id")
           .eq("username", username)
           .maybeSingle();
-        if (existing && existing.id !== id) return json({ error: "That username is already in use." }, 409);
+        if (existingUsername && existingUsername.id !== id) {
+          return json({ error: "That username is already in use." }, 409);
+        }
 
-        if (!existing || existing.username !== username) {
-          const { error: emailError } = await admin.auth.admin.updateUserById(id, {
-            email: usernameToEmail(username),
-          });
+        // Username and email are independent identifiers now — changing one must never
+        // touch the other. Only call updateUserById when the email itself actually changed.
+        const { data: currentProfile } = await admin.from("profiles").select("email").eq("id", id).maybeSingle();
+        if (!currentProfile) return json({ error: "User not found." }, 404);
+
+        if (currentProfile.email !== email) {
+          const { error: emailError } = await admin.auth.admin.updateUserById(id, { email });
           if (emailError) return json({ error: emailError.message }, 400);
         }
 
         const { error: profileError } = await admin
           .from("profiles")
-          .update({ full_name: fullName.trim(), username, role })
+          .update({ full_name: fullName.trim(), username, email, role })
           .eq("id", id);
-        if (profileError) return json({ error: profileError.message }, 400);
+        if (profileError) {
+          const message =
+            profileError.code === "23505" ? "That username or email is already in use." : profileError.message;
+          return json({ error: message }, 409);
+        }
 
         return json({ ok: true });
       }

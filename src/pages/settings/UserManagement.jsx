@@ -9,9 +9,9 @@ import { getInitials } from '../../utils/initials'
 const inputClass =
   'rounded-md border border-border-strong bg-white px-2.5 py-[7px] text-[13px] text-text-primary outline-none focus:border-brand-400'
 
-// Must match the Edge Function's validation (supabase/functions/admin-users/index.ts)
-// exactly — usernames are mapped 1:1 to synthetic Supabase Auth emails.
+// Must match the Edge Function's validation (supabase/functions/admin-users/index.ts) exactly.
 const USERNAME_RE = /^[a-z0-9._-]{3,32}$/
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function Field({ label, children }) {
   return (
@@ -44,6 +44,7 @@ function UserFormModal({ user, isUsernameTaken, onSave, onClose }) {
   const isEdit = Boolean(user)
   const [fullName, setFullName] = useState(user?.fullName ?? '')
   const [username, setUsername] = useState(user?.username ?? '')
+  const [email, setEmail] = useState(user?.email ?? '')
   const [password, setPassword] = useState('')
   const [role, setRole] = useState(user?.role ?? ROLE_OPTIONS[0])
   const [error, setError] = useState('')
@@ -51,12 +52,16 @@ function UserFormModal({ user, isUsernameTaken, onSave, onClose }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!fullName.trim() || !username.trim() || (!isEdit && !password.trim())) {
+    if (!fullName.trim() || !username.trim() || !email.trim() || (!isEdit && !password.trim())) {
       setError('Please fill in every field.')
       return
     }
     if (!USERNAME_RE.test(username.trim().toLowerCase())) {
       setError('Username must be 3-32 characters: lowercase letters, numbers, dots, underscores, or hyphens.')
+      return
+    }
+    if (!EMAIL_RE.test(email.trim().toLowerCase())) {
+      setError('Please enter a valid email address.')
       return
     }
     if (isUsernameTaken(username, user?.id)) {
@@ -69,6 +74,7 @@ function UserFormModal({ user, isUsernameTaken, onSave, onClose }) {
       await onSave({
         fullName: fullName.trim(),
         username: username.trim().toLowerCase(),
+        email: email.trim().toLowerCase(),
         role,
         ...(isEdit ? {} : { password: password.trim() }),
       })
@@ -106,6 +112,14 @@ function UserFormModal({ user, isUsernameTaken, onSave, onClose }) {
         </Field>
         <Field label="Username">
           <input className={inputClass} value={username} onChange={(e) => setUsername(e.target.value)} placeholder="e.g. faisal" />
+        </Field>
+        <Field label="Email">
+          <input
+            className={inputClass}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="e.g. faisal@farmfrites.com"
+          />
         </Field>
         {!isEdit && (
           <Field label="Password">

@@ -21,7 +21,14 @@ if (window.location.pathname !== '/reset-password') {
 const AuthContext = createContext(null)
 
 function mapProfile(row) {
-  return { id: row.id, fullName: row.full_name, username: row.username, role: row.role, status: row.status }
+  return {
+    id: row.id,
+    fullName: row.full_name,
+    username: row.username,
+    email: row.email,
+    role: row.role,
+    status: row.status,
+  }
 }
 
 async function invokeAdminUsers(action, payload) {
@@ -147,6 +154,7 @@ export function AuthProvider({ children }) {
       const result = await invokeAdminUsers('create', {
         fullName: data.fullName,
         username: data.username,
+        email: data.email,
         password: data.password,
         role: data.role,
       })
@@ -158,7 +166,13 @@ export function AuthProvider({ children }) {
 
   const updateUser = useCallback(
     async (id, patch) => {
-      await invokeAdminUsers('update', { id, fullName: patch.fullName, username: patch.username, role: patch.role })
+      await invokeAdminUsers('update', {
+        id,
+        fullName: patch.fullName,
+        username: patch.username,
+        email: patch.email,
+        role: patch.role,
+      })
       await fetchUsers()
     },
     [fetchUsers],
