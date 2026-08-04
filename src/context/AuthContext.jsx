@@ -1,6 +1,23 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
+// Detect a Supabase password-recovery link synchronously, at module load — before Supabase's
+// client has a chance to process the URL. The PASSWORD_RECOVERY event fired inside
+// supabase-js is deferred via setTimeout(0) and isn't queued for late subscribers the way
+// other init-time events are, so it can arrive after AuthProvider's useEffect has registered
+// its onAuthStateChange listener, or before — the event alone is a race, not a guarantee (see
+// the PASSWORD_RECOVERY branch below, kept as a defense-in-depth backup). Reading the URL here
+// runs deterministically before any of that, since it's plain synchronous parsing of data the
+// browser already has. The hash/query is preserved on the redirect so Supabase can still
+// exchange the token once the page reloads on /reset-password.
+if (window.location.pathname !== '/reset-password') {
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+  const searchParams = new URLSearchParams(window.location.search)
+  if (hashParams.get('type') === 'recovery' || searchParams.get('type') === 'recovery') {
+    window.location.replace(`/reset-password${window.location.search}${window.location.hash}`)
+  }
+}
+
 const AuthContext = createContext(null)
 
 // Fixed synthetic email domain for username -> Supabase Auth email mapping.
