@@ -20,14 +20,6 @@ if (window.location.pathname !== '/reset-password') {
 
 const AuthContext = createContext(null)
 
-// Fixed synthetic email domain for username -> Supabase Auth email mapping.
-// Must match EMAIL_DOMAIN in supabase/functions/admin-users/index.ts exactly.
-const EMAIL_DOMAIN = 'tms.farmfrites.internal'
-
-function usernameToEmail(username) {
-  return `${username.trim().toLowerCase()}@${EMAIL_DOMAIN}`
-}
-
 function mapProfile(row) {
   return { id: row.id, fullName: row.full_name, username: row.username, role: row.role, status: row.status }
 }
@@ -115,15 +107,23 @@ export function AuthProvider({ children }) {
   }, [profile?.role, fetchUsers])
 
   const login = useCallback(async (username, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: usernameToEmail(username),
-      password,
-    })
-    if (error || !data.session) {
+    // The Edge Function resolves username -> real email and checks the password entirely
+    // server-side (via service_role, reading profiles.email) — the browser never learns any
+    // employee's real email address, only the resulting session tokens on success.
+    const { data, error } = await supabase.functions.invoke('login', { body: { username, password } })
+    if (error || !data?.access_token || !data?.refresh_token) {
       return { ok: false, error: 'Incorrect username or password.' }
     }
 
-    const { data: row } = await supabase.from('profiles').select('*').eq('id', data.user.id).single()
+    const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+    })
+    if (sessionError || !sessionData.user) {
+      return { ok: false, error: 'Incorrect username or password.' }
+    }
+
+    const { data: row } = await supabase.from('profiles').select('*').eq('id', sessionData.user.id).single()
     if (!row) {
       await supabase.auth.signOut()
       return { ok: false, error: 'Incorrect username or password.' }
