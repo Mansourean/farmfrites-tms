@@ -62,8 +62,20 @@ export function AuthProvider({ children }) {
       if (active) setLoading(false)
     })
 
-    const { data: subscription } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: subscription } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!active) return
+
+      // A Supabase recovery-link session is not a normal login — send the user straight to
+      // the password-reset form instead of letting ProtectedRoute wave them into the app.
+      // AuthProvider renders above BrowserRouter (see App.jsx), so useNavigate isn't
+      // available here; a hard navigation is the only router-agnostic option.
+      if (event === 'PASSWORD_RECOVERY') {
+        if (window.location.pathname !== '/reset-password') {
+          window.location.replace('/reset-password')
+        }
+        return
+      }
+
       setLoading(true)
       await applySession(session)
       setLoading(false)
