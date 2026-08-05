@@ -20,15 +20,25 @@ const inputClass =
   'rounded-lg border border-border-strong bg-white px-3 py-2.5 text-[14px] text-text-primary outline-none focus:border-brand-400'
 
 export function LoginPage() {
-  const { currentUser, loading, login } = useAuth()
+  const { currentUser, loading, login, requestPasswordReset } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
+
+  // 'login' | 'forgot' — kept in the same card/route rather than a separate page, since the
+  // only thing this needs from the user is a username, and /reset-password already exists
+  // to handle the email link itself once it arrives.
+  const [mode, setMode] = useState('login')
 
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  const [forgotUsername, setForgotUsername] = useState('')
+  const [forgotError, setForgotError] = useState('')
+  const [forgotSubmitting, setForgotSubmitting] = useState(false)
+  const [forgotDone, setForgotDone] = useState(false)
 
   // Avoid flashing the login form while a persisted session is still being restored.
   if (loading) return null
@@ -60,6 +70,32 @@ export function LoginPage() {
     setError('')
   }
 
+  const openForgotPassword = () => {
+    setForgotUsername(username)
+    setForgotError('')
+    setForgotDone(false)
+    setMode('forgot')
+  }
+
+  const backToLogin = () => {
+    setMode('login')
+  }
+
+  const handleForgotSubmit = async (e) => {
+    e.preventDefault()
+    if (!forgotUsername.trim()) {
+      setForgotError('Please enter your username.')
+      return
+    }
+    setForgotError('')
+    setForgotSubmitting(true)
+    // requestPasswordReset never throws and never signals whether the username existed —
+    // the UI always lands on the same confirmation state either way.
+    await requestPasswordReset(forgotUsername.trim())
+    setForgotSubmitting(false)
+    setForgotDone(true)
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface-alt px-4 py-10">
       <div className="w-full max-w-sm">
@@ -73,52 +109,114 @@ export function LoginPage() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-3.5 rounded-xl border border-border bg-white p-6 shadow-sm">
-          <p className="text-[15px] font-semibold text-text-primary">Sign in</p>
+        {mode === 'login' ? (
+          <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-3.5 rounded-xl border border-border bg-white p-6 shadow-sm">
+            <p className="text-[15px] font-semibold text-text-primary">Sign in</p>
 
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[12px] font-medium text-text-secondary">Username</span>
-            <input
-              autoFocus
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="e.g. admin"
-              className={inputClass}
-            />
-          </label>
-
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[12px] font-medium text-text-secondary">Password</span>
-            <div className="relative">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[12px] font-medium text-text-secondary">Username</span>
               <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className={`${inputClass} w-full pr-9`}
+                autoFocus
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="e.g. admin"
+                className={inputClass}
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-text-muted hover:bg-surface-hover hover:text-text-secondary"
-              >
-                <Icon name={showPassword ? 'eyeOff' : 'eye'} className="h-4 w-4" />
-              </button>
-            </div>
-          </label>
+            </label>
 
-          {error && <p className="rounded-md bg-[#FBE7E5] px-3 py-2 text-[12.5px] font-medium text-[#B42318]">{error}</p>}
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[12px] font-medium text-text-secondary">Password</span>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className={`${inputClass} w-full pr-9`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-text-muted hover:bg-surface-hover hover:text-text-secondary"
+                >
+                  <Icon name={showPassword ? 'eyeOff' : 'eye'} className="h-4 w-4" />
+                </button>
+              </div>
+            </label>
 
-          <button
-            type="submit"
-            disabled={!username || !password || submitting}
-            className="mt-1 flex items-center justify-center gap-1.5 rounded-lg bg-text-primary py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-[#333331] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {submitting ? 'Signing in…' : 'Login'}
-          </button>
-        </form>
+            {error && <p className="rounded-md bg-[#FBE7E5] px-3 py-2 text-[12.5px] font-medium text-[#B42318]">{error}</p>}
 
-        {__ENABLE_DEMO_ACCOUNTS__ && (
+            <button
+              type="submit"
+              disabled={!username || !password || submitting}
+              className="mt-1 flex items-center justify-center gap-1.5 rounded-lg bg-text-primary py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-[#333331] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {submitting ? 'Signing in…' : 'Login'}
+            </button>
+
+            <button
+              type="button"
+              onClick={openForgotPassword}
+              className="text-center text-[12.5px] font-medium text-text-secondary hover:text-text-primary"
+            >
+              Forgot password?
+            </button>
+          </form>
+        ) : (
+          <div className="mt-6 flex flex-col gap-3.5 rounded-xl border border-border bg-white p-6 shadow-sm">
+            <p className="text-[15px] font-semibold text-text-primary">Reset your password</p>
+
+            {forgotDone ? (
+              <>
+                <p className="rounded-md bg-[#DAF3E3] px-3 py-2 text-[12.5px] font-medium text-[#0F6B32]">
+                  If that account exists, a recovery email has been sent.
+                </p>
+                <button
+                  type="button"
+                  onClick={backToLogin}
+                  className="text-center text-[12.5px] font-medium text-text-secondary hover:text-text-primary"
+                >
+                  Back to login
+                </button>
+              </>
+            ) : (
+              <form onSubmit={handleForgotSubmit} className="flex flex-col gap-3.5">
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-[12px] font-medium text-text-secondary">Username</span>
+                  <input
+                    autoFocus
+                    value={forgotUsername}
+                    onChange={(e) => setForgotUsername(e.target.value)}
+                    placeholder="e.g. admin"
+                    className={inputClass}
+                  />
+                </label>
+
+                {forgotError && (
+                  <p className="rounded-md bg-[#FBE7E5] px-3 py-2 text-[12.5px] font-medium text-[#B42318]">{forgotError}</p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={!forgotUsername || forgotSubmitting}
+                  className="mt-1 flex items-center justify-center gap-1.5 rounded-lg bg-text-primary py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-[#333331] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {forgotSubmitting ? 'Sending…' : 'Send recovery email'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={backToLogin}
+                  className="text-center text-[12.5px] font-medium text-text-secondary hover:text-text-primary"
+                >
+                  Back to login
+                </button>
+              </form>
+            )}
+          </div>
+        )}
+
+        {mode === 'login' && __ENABLE_DEMO_ACCOUNTS__ && (
           <div className="mt-4 rounded-xl border border-border bg-white p-4">
             <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-text-faint">Demo Accounts</p>
             <div className="flex flex-col gap-0.5">

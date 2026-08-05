@@ -149,6 +149,18 @@ export function AuthProvider({ children }) {
     supabase.auth.signOut()
   }, [])
 
+  // Deliberately swallows any error — the forgot-password Edge Function already always
+  // responds with the same generic message regardless of whether the username exists, and
+  // surfacing a distinct failure here (e.g. network/5xx) would create a second way to tell
+  // "no such account" apart from "something went wrong," which defeats the point.
+  const requestPasswordReset = useCallback(async (username) => {
+    try {
+      await supabase.functions.invoke('forgot-password', { body: { username } })
+    } catch {
+      // ignored — caller always shows the same generic confirmation
+    }
+  }, [])
+
   const createUser = useCallback(
     async (data) => {
       const result = await invokeAdminUsers('create', {
@@ -212,6 +224,7 @@ export function AuthProvider({ children }) {
       users,
       login,
       logout,
+      requestPasswordReset,
       createUser,
       updateUser,
       toggleUserStatus,
@@ -219,7 +232,20 @@ export function AuthProvider({ children }) {
       deleteUser,
       isUsernameTaken,
     }),
-    [profile, loading, users, login, logout, createUser, updateUser, toggleUserStatus, resetPassword, deleteUser, isUsernameTaken],
+    [
+      profile,
+      loading,
+      users,
+      login,
+      logout,
+      requestPasswordReset,
+      createUser,
+      updateUser,
+      toggleUserStatus,
+      resetPassword,
+      deleteUser,
+      isUsernameTaken,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
