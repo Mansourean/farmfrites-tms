@@ -4,14 +4,13 @@ import { useTrips } from '../../context/TripsContext'
 import { useWhatsappModal } from '../../context/WhatsappModalContext'
 import { useDeleteTrip } from '../../context/DeleteTripContext'
 import { useAuth } from '../../context/AuthContext'
-import { canEdit } from '../../data/roles'
-import { customers } from '../../data/customers'
-import { transporters, vehicleTypes } from '../../data/transporters'
-import { warehouses } from '../../data/warehouses'
-import { getWarehouse } from '../../data/lookup'
+import { canEdit, canManageMasterData } from '../../data/roles'
+import { fetchTripEvents } from '../../services/tripEvents'
+import { tripEventToTimelineItem } from '../../lib/tripsMapping'
 import { Icon } from '../ui/Icon'
 import { Avatar } from '../ui/Avatar'
 import { TripStatusPill } from './TripStatusPill'
+import { AddMasterDataModal } from './AddMasterDataModal'
 import { formatDate, formatDateTime } from '../../utils/format'
 import { getInitials } from '../../utils/initials'
 
@@ -21,20 +20,37 @@ const tabs = [
   { key: 'timeline', label: 'Timeline' },
 ]
 
-function emptyForm() {
+// Only auto-picks a Destination Warehouse when exactly one warehouse is active -- the current
+// real-world case (a single active operational warehouse today). If zero or more than one are
+// active, the field starts unselected rather than arbitrarily picking the first row in the
+// list -- there is no default rule for the multi-warehouse case yet, so the dispatcher must
+// choose consciously. Never hard-codes any warehouse's identity; purely a count of `isActive`
+// rows.
+function singleActiveWarehouseId(warehouses) {
+  const active = warehouses.filter((w) => w.isActive)
+  return active.length === 1 ? active[0].id : ''
+}
+
+// customers/warehouses/transporters now come from live Supabase data (see TripsContext),
+// so these take the current lists as arguments instead of closing over a static import.
+function emptyForm({ customers, warehouses, transporters }) {
   return {
     salesNo: '',
     tripType: 'customer',
-    customerId: customers[0].id,
-    sourceWarehouseId: warehouses[0].id,
-    destinationWarehouseId: warehouses[1].id,
+    customerId: customers[0]?.id ?? '',
+    // Pilot scope: goods physically originate from the Sudair factory for every trip, not from
+    // any warehouse record. Confirmed source_warehouse_id is nullable in production, so this is
+    // left null (never shown, never asked of the user, never auto-filled) rather than borrowing
+    // a warehouse's identity as a stand-in -- that would misrepresent where the trip actually
+    // started. A proper Origin/Dispatch-From concept is a deliberate post-Pilot design.
+    sourceWarehouseId: '',
+    destinationWarehouseId: singleActiveWarehouseId(warehouses),
     destination: '',
     loadTons: '',
-    transporterId: transporters[0].id,
+    transporterId: transporters[0]?.id ?? '',
     driverName: '',
     driverPhone: '',
     plateNo: '',
-    vehicleType: vehicleTypes[0],
     dispatchDate: '',
     deliveryDate: '',
     status: 'planned',
@@ -42,20 +58,26 @@ function emptyForm() {
   }
 }
 
-function formFromTrip(trip) {
+function formFromTrip(trip, { customers, warehouses }) {
+  // destinationWarehouseId has no DB column (destination only stores the resolved warehouse
+  // name as text -- see tripsMapping.js), so on edit it's re-derived by matching that name
+  // back against the live warehouse list, not read from trip.destinationWarehouseId (always
+  // null after a reload). Without this, the dropdown would silently default to the wrong
+  // warehouse and saving would overwrite the correct destination text.
+  const matchedDestinationWarehouse =
+    trip.tripType === 'internal' ? warehouses.find((w) => w.name === trip.destination) : null
   return {
     salesNo: trip.salesNo,
     tripType: trip.tripType,
-    customerId: trip.customerId ?? customers[0].id,
+    customerId: trip.customerId ?? customers[0]?.id ?? '',
     sourceWarehouseId: trip.sourceWarehouseId,
-    destinationWarehouseId: trip.destinationWarehouseId ?? warehouses[1].id,
+    destinationWarehouseId: matchedDestinationWarehouse?.id ?? warehouses[1]?.id ?? warehouses[0]?.id ?? '',
     destination: trip.destination,
     loadTons: trip.loadTons,
     transporterId: trip.transporterId,
     driverName: trip.driver?.name ?? '',
     driverPhone: trip.driver?.phone ?? '',
     plateNo: trip.plateNo,
-    vehicleType: trip.vehicleType || vehicleTypes[0],
     dispatchDate: trip.dispatchDate,
     deliveryDate: trip.deliveryDate,
     status: trip.status,
@@ -63,12 +85,33 @@ function formFromTrip(trip) {
   }
 }
 
-function Field({ label, children }) {
+function Field({ label, action, children }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-[11px] font-medium uppercase tracking-wide text-text-faint">{label}</span>
+      <span className="flex items-center justify-between gap-2">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-text-faint">{label}</span>
+        {action}
+      </span>
       {children}
     </label>
+  )
+}
+
+// Small "+" trigger shown beside a master-data dropdown's label (Phase 4 inline creation) --
+// only rendered for admin/dispatcher, matching the create_* RPCs' own role check exactly.
+function AddButton({ onClick, label }) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault()
+        onClick()
+      }}
+      title={label}
+      className="rounded p-0.5 text-text-muted hover:bg-surface-hover hover:text-text-primary"
+    >
+      <Icon name="plus" className="h-3 w-3" />
+    </button>
   )
 }
 
@@ -77,23 +120,89 @@ const inputClass =
 
 export function TripPanel() {
   const { open, mode, tripId, tab, close, openView } = useTripPanel()
-  const { trips, createTrip, updateTrip, isSalesNoTaken } = useTrips()
+  const {
+    trips,
+    customers,
+    transporters,
+    warehouses,
+    destinations,
+    refreshMasterData,
+    createTrip,
+    updateTrip,
+    isSalesNoTaken,
+  } = useTrips()
   const whatsapp = useWhatsappModal()
   const deleteTrip = useDeleteTrip()
   const { currentUser } = useAuth()
   const editable = canEdit(currentUser?.role)
+  const canAddMasterData = canManageMasterData(currentUser?.role)
   const trip = useMemo(() => trips.find((t) => t.id === tripId) ?? null, [trips, tripId])
   const isEditing = mode === 'create' || mode === 'edit'
+  const masterData = useMemo(() => ({ customers, transporters, warehouses }), [customers, transporters, warehouses])
 
-  const [form, setForm] = useState(emptyForm)
+  const [form, setForm] = useState(() => emptyForm(masterData))
   const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [realEvents, setRealEvents] = useState([])
+  const [eventsLoading, setEventsLoading] = useState(false)
+  // { entityType: 'customer'|'transporter'|'warehouse', field: <form key to auto-select> }
+  const [addModal, setAddModal] = useState(null)
 
   useEffect(() => {
     if (!open) return
     setError('')
-    if (mode === 'create') setForm(emptyForm())
-    else if (trip) setForm(formFromTrip(trip))
+    if (mode === 'create') setForm(emptyForm(masterData))
+    else if (trip) setForm(formFromTrip(trip, masterData))
+    // Deliberately NOT depending on `masterData`: Phase 4's inline "+" creation refreshes
+    // master data while this panel stays open, and re-seeding the whole form on that change
+    // would wipe out whatever the user was mid-typing -- the very bug this omission avoids.
+    // The form is seeded once when the panel opens / the target trip changes, using whatever
+    // masterData was current at that moment; dropdown option lists still update live from
+    // props independently of this effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, mode, trip])
+
+  const handleMasterDataCreated = async (row) => {
+    if (!addModal) return
+    const { entityType, field } = addModal
+    await refreshMasterData()
+    // destination has no *Id form field -- trips.destination stores the resolved name
+    // directly (see tripsMapping.js), same as Destination Warehouse already does.
+    const value = entityType === 'destination' ? row.destination_name : row.id
+    setForm((f) => ({ ...f, [field]: value }))
+    setAddModal(null)
+  }
+
+  // Phase 3: the durable Loaded/Reject audit trail lives in trip_events, not in the
+  // synthetic/optimistic entries TripsContext builds locally -- fetched on demand only when
+  // the Timeline tab is actually viewed, so viewing trip details/editing never pays for it.
+  useEffect(() => {
+    if (!open || tab !== 'timeline' || !trip) return
+    let cancelled = false
+    setEventsLoading(true)
+    fetchTripEvents(trip.id)
+      .then((rows) => {
+        if (!cancelled) setRealEvents(rows.map(tripEventToTimelineItem))
+      })
+      .catch(() => {
+        if (!cancelled) setRealEvents([])
+      })
+      .finally(() => {
+        if (!cancelled) setEventsLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [open, tab, trip])
+
+  // Merges the durable trip_events-backed entries with trip.timeline's existing synthetic
+  // (created/updated) and optimistic (Delivered, WhatsApp) entries -- these never overlap in
+  // event type, so no de-duplication is needed, just a combined chronological order.
+  const mergedTimeline = useMemo(
+    () =>
+      [...(trip?.timeline ?? []), ...realEvents].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)),
+    [trip, realEvents],
+  )
 
   useEffect(() => {
     if (!open) return
@@ -111,7 +220,7 @@ export function TripPanel() {
     setForm((f) => ({ ...f, [key]: value }))
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const salesNo = form.salesNo.trim()
     if (!salesNo) {
       setError('Sales No is required.')
@@ -119,6 +228,10 @@ export function TripPanel() {
     }
     if (isSalesNoTaken(salesNo, mode === 'edit' ? trip?.id : undefined)) {
       setError(`Sales No "${salesNo}" is already in use by another trip.`)
+      return
+    }
+    if (form.tripType === 'internal' && !form.destinationWarehouseId) {
+      setError('Destination Warehouse is required.')
       return
     }
 
@@ -138,26 +251,33 @@ export function TripPanel() {
       transporterId: form.transporterId,
       driver: form.driverName ? { name: form.driverName, phone: form.driverPhone } : null,
       plateNo: form.plateNo,
-      vehicleType: form.vehicleType,
       dispatchDate: form.dispatchDate,
       deliveryDate: form.deliveryDate,
+      status: form.status,
       remarks: form.remarks,
     }
 
-    if (mode === 'create') {
-      const created = createTrip(payload)
-      openView(created.id, 'details')
-    } else if (mode === 'edit' && trip) {
-      updateTrip(trip.id, { ...payload, status: form.status })
-      openView(trip.id, 'details')
+    setSaving(true)
+    try {
+      if (mode === 'create') {
+        const created = await createTrip(payload)
+        openView(created.id, 'details')
+      } else if (mode === 'edit' && trip) {
+        await updateTrip(trip.id, payload)
+        openView(trip.id, 'details')
+      }
+    } catch (err) {
+      setError(err.message || 'Could not save this trip.')
+    } finally {
+      setSaving(false)
     }
   }
 
   const title = mode === 'create' ? 'New Trip' : trip?.salesNo ?? ''
-  const originName =
-    form.tripType === 'customer'
-      ? customers.find((c) => c.id === form.customerId)?.name
-      : warehouses.find((w) => w.id === form.sourceWarehouseId)?.name
+  // Only ever rendered for Customer Delivery trips (see the Details view below) -- there is no
+  // meaningful "origin" to show for Internal Transfer under the Pilot's model (see
+  // sourceWarehouseId's comment in emptyForm).
+  const originName = customers.find((c) => c.id === form.customerId)?.name
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
@@ -242,9 +362,14 @@ export function TripPanel() {
                 </div>
               </Field>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {form.tripType === 'customer' ? (
-                  <Field label="Customer">
+              {form.tripType === 'customer' ? (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Field
+                    label="Customer"
+                    action={canAddMasterData && (
+                      <AddButton label="Add customer" onClick={() => setAddModal({ entityType: 'customer', field: 'customerId' })} />
+                    )}
+                  >
                     <select className={inputClass} value={form.customerId} onChange={set('customerId')}>
                       {customers.map((c) => (
                         <option key={c.id} value={c.id}>
@@ -253,59 +378,69 @@ export function TripPanel() {
                       ))}
                     </select>
                   </Field>
-                ) : (
-                  <Field label="Source Warehouse">
-                    <select className={inputClass} value={form.sourceWarehouseId} onChange={set('sourceWarehouseId')}>
-                      {warehouses.map((w) => (
-                        <option key={w.id} value={w.id}>
-                          {w.name}
+
+                  <Field
+                    label="Destination"
+                    action={canAddMasterData && (
+                      <AddButton label="Add destination" onClick={() => setAddModal({ entityType: 'destination', field: 'destination' })} />
+                    )}
+                  >
+                    <select className={inputClass} value={form.destination} onChange={set('destination')}>
+                      {!form.destination && (
+                        <option value="" disabled>
+                          Select destination…
+                        </option>
+                      )}
+                      {/* Existing trips predate this table -- an unmatched current value is kept
+                          selectable as itself, never silently swapped for the first list item. */}
+                      {form.destination && !destinations.some((d) => d.name === form.destination) && (
+                        <option value={form.destination}>{form.destination} (current, not in list)</option>
+                      )}
+                      {destinations.map((d) => (
+                        <option key={d.id} value={d.name}>
+                          {d.name}
                         </option>
                       ))}
                     </select>
                   </Field>
-                )}
-
-                {form.tripType === 'customer' ? (
-                  <Field label="Source Warehouse">
-                    <select className={inputClass} value={form.sourceWarehouseId} onChange={set('sourceWarehouseId')}>
-                      {warehouses.map((w) => (
-                        <option key={w.id} value={w.id}>
-                          {w.name}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                ) : (
-                  <Field label="Destination Warehouse">
-                    <select
-                      className={inputClass}
-                      value={form.destinationWarehouseId}
-                      onChange={set('destinationWarehouseId')}
-                    >
-                      {warehouses
-                        .filter((w) => w.id !== form.sourceWarehouseId)
-                        .map((w) => (
-                          <option key={w.id} value={w.id}>
-                            {w.name}
-                          </option>
-                        ))}
-                    </select>
-                  </Field>
-                )}
-              </div>
-
-              {form.tripType === 'customer' && (
-                <Field label="Destination">
-                  <input
+                </div>
+              ) : (
+                // Pilot scope: origin is operationally understood to be the Sudair factory for
+                // both trip types -- there is no Source Warehouse selection here.
+                <Field
+                  label="Destination Warehouse"
+                  action={canAddMasterData && (
+                    <AddButton
+                      label="Add warehouse"
+                      onClick={() => setAddModal({ entityType: 'warehouse', field: 'destinationWarehouseId' })}
+                    />
+                  )}
+                >
+                  <select
                     className={inputClass}
-                    value={form.destination}
-                    onChange={set('destination')}
-                    placeholder="e.g. Panda DC, Jeddah Industrial Area"
-                  />
+                    value={form.destinationWarehouseId}
+                    onChange={set('destinationWarehouseId')}
+                  >
+                    {!form.destinationWarehouseId && (
+                      <option value="" disabled>
+                        Select warehouse…
+                      </option>
+                    )}
+                    {warehouses.map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.name}
+                      </option>
+                    ))}
+                  </select>
                 </Field>
               )}
 
-              <Field label="Transporter">
+              <Field
+                label="Transporter"
+                action={canAddMasterData && (
+                  <AddButton label="Add transporter" onClick={() => setAddModal({ entityType: 'transporter', field: 'transporterId' })} />
+                )}
+              >
                 <select className={inputClass} value={form.transporterId} onChange={set('transporterId')}>
                   {transporters.map((t) => (
                     <option key={t.id} value={t.id}>
@@ -324,52 +459,41 @@ export function TripPanel() {
                 </Field>
               </div>
 
-              {mode === 'edit' && (
-                <>
-                  <Field label="Load (Tons)">
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      className={inputClass}
-                      value={form.loadTons}
-                      onChange={set('loadTons')}
-                    />
-                  </Field>
+              <Field label="Load (Tons)">
+                <input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  className={inputClass}
+                  value={form.loadTons}
+                  onChange={set('loadTons')}
+                />
+              </Field>
 
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <Field label="Driver Name">
-                      <input className={inputClass} value={form.driverName} onChange={set('driverName')} placeholder="Optional" />
-                    </Field>
-                    <Field label="Driver Phone">
-                      <input className={inputClass} value={form.driverPhone} onChange={set('driverPhone')} placeholder="Optional" />
-                    </Field>
-                  </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Field label="Driver Name">
+                  <input className={inputClass} value={form.driverName} onChange={set('driverName')} placeholder="Optional" />
+                </Field>
+                <Field label="Driver Phone">
+                  <input className={inputClass} value={form.driverPhone} onChange={set('driverPhone')} placeholder="Optional" />
+                </Field>
+              </div>
 
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <Field label="Plate No">
-                      <input className={inputClass} value={form.plateNo} onChange={set('plateNo')} placeholder="Optional" />
-                    </Field>
-                    <Field label="Vehicle Type">
-                      <select className={inputClass} value={form.vehicleType} onChange={set('vehicleType')}>
-                        {vehicleTypes.map((v) => (
-                          <option key={v} value={v}>
-                            {v}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                  </div>
+              <Field label="Plate No">
+                <input className={inputClass} value={form.plateNo} onChange={set('plateNo')} placeholder="Optional" />
+              </Field>
 
-                  <Field label="Status">
-                    <select className={inputClass} value={form.status} onChange={set('status')}>
-                      <option value="planned">Planned</option>
-                      <option value="in_transit">In Transit</option>
-                      <option value="delivered">Delivered</option>
-                    </select>
-                  </Field>
-                </>
-              )}
+              <Field label="Status">
+                <select className={inputClass} value={form.status} onChange={set('status')}>
+                  <option value="planned">Planned</option>
+                  <option value="waiting_driver">Waiting Driver</option>
+                  <option value="loaded">Loaded</option>
+                  <option value="in_transit">In Transit</option>
+                  <option value="delivered">Delivered</option>
+                  <option value="cancelled">Cancelled</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </Field>
 
               <Field label="Remarks">
                 <textarea
@@ -414,14 +538,6 @@ export function TripPanel() {
                   </div>
                 </section>
               )}
-
-              <section>
-                <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-text-faint">Warehouse</p>
-                <div className="rounded-lg border border-border p-3 text-[13px]">
-                  <p className="font-medium text-text-primary">{getWarehouse(trip.sourceWarehouseId)?.name ?? '—'}</p>
-                  <p className="text-text-muted">Dispatch warehouse</p>
-                </div>
-              </section>
 
               <section>
                 <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-text-faint">Destination</p>
@@ -542,14 +658,15 @@ export function TripPanel() {
             </div>
           ) : trip && tab === 'timeline' ? (
             <div className="flex flex-col">
-              {trip.timeline
+              {eventsLoading && <p className="pb-3 text-[12.5px] text-text-faint">Loading history…</p>}
+              {mergedTimeline
                 .slice()
                 .reverse()
                 .map((event, i) => (
                   <div key={event.id} className="flex gap-3">
                     <div className="flex flex-col items-center">
                       <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-brand-500" />
-                      {i < trip.timeline.length - 1 && <span className="w-px flex-1 bg-border" />}
+                      {i < mergedTimeline.length - 1 && <span className="w-px flex-1 bg-border" />}
                     </div>
                     <div className="pb-4">
                       <p className="text-[13px] font-medium text-text-primary">{event.label}</p>
@@ -588,14 +705,22 @@ export function TripPanel() {
               <button
                 type="button"
                 onClick={handleSave}
-                className="rounded-md bg-text-primary px-3.5 py-1.5 text-[13px] font-medium text-white hover:bg-[#333331]"
+                disabled={saving}
+                className="rounded-md bg-text-primary px-3.5 py-1.5 text-[13px] font-medium text-white hover:bg-[#333331] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {mode === 'create' ? 'Create Trip' : 'Save Changes'}
+                {saving ? 'Saving…' : mode === 'create' ? 'Create Trip' : 'Save Changes'}
               </button>
             </div>
           </div>
         )}
       </div>
+
+      <AddMasterDataModal
+        open={!!addModal}
+        entityType={addModal?.entityType}
+        onClose={() => setAddModal(null)}
+        onCreated={handleMasterDataCreated}
+      />
     </div>
   )
 }

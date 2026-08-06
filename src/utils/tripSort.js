@@ -1,4 +1,15 @@
-const STATUS_RANK = { planned: 0, in_transit: 1, delivered: 2 }
+// 'rejected' ranks above 'planned' -- a rejected trip needs immediate transportation-team
+// follow-up (re-dispatch, new driver, etc.), so it must surface at the very top of the log,
+// not settle near Delivered/Cancelled where it would be easy to miss.
+const STATUS_RANK = {
+  rejected: 0,
+  planned: 1,
+  waiting_driver: 2,
+  loaded: 3,
+  in_transit: 4,
+  delivered: 5,
+  cancelled: 6,
+}
 
 function createdRank(trip) {
   // Prefer the numeric creation sequence (always monotonic, immune to the demo data's

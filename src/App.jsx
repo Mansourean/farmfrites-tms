@@ -39,8 +39,13 @@ function App() {
                     <Route path="/settings" element={<Settings />} />
                   </Route>
                 </Route>
+                {/* Outside AppLayout/RoleGuard (its own full-screen kiosk-style UI, not in
+                    any role's ROLE_PAGE_ACCESS list), but still requires a real authenticated
+                    active user -- see the Phase 3 report on why this moved under
+                    ProtectedRoute (the mark_trip_loaded/reject_trip_load RPCs and even
+                    reading trips both require an authenticated session under RLS). */}
+                <Route path="/warehouse/scan" element={<WarehouseScan />} />
               </Route>
-              <Route path="/warehouse/scan" element={<WarehouseScan />} />
               <Route path="/whatsapp/:token" element={<WhatsappUpdate />} />
               <Route path="/print/trip/:id" element={<PrintTrip />} />
               <Route path="*" element={<NotFound />} />

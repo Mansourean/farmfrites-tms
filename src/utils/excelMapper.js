@@ -1,7 +1,3 @@
-import { customers } from '../data/customers'
-import { transporters } from '../data/transporters'
-import { warehouses } from '../data/warehouses'
-
 // The column headers the importer recognizes. Extra columns in the sheet are ignored.
 export const EXPECTED_HEADERS = [
   'Sales No',
@@ -26,15 +22,19 @@ function normalizeHeader(header) {
     .replace(/[\s_-]+/g, '')
 }
 
+// customers/transporters/warehouses now come from live Supabase master data (see
+// services/masterData.js) instead of the old static seed files -- findByName still just
+// matches on `.name`, so this only changes *where* the list comes from, not how matching
+// works. Every list item is `{id, code, name}`; a match's `.id` is a real Supabase UUID.
 function findByName(list, name) {
   if (!name) return null
   const target = name.trim().toLowerCase()
   return list.find((item) => item.name.trim().toLowerCase() === target) ?? null
 }
 
-export const findCustomerByName = (name) => findByName(customers, name)
-export const findWarehouseByName = (name) => findByName(warehouses, name)
-export const findTransporterByName = (name) => findByName(transporters, name)
+export const findCustomerByName = (name, customers) => findByName(customers, name)
+export const findWarehouseByName = (name, warehouses) => findByName(warehouses, name)
+export const findTransporterByName = (name, transporters) => findByName(transporters, name)
 
 // Defaults to "Customer Delivery" when the column is blank or unrecognized.
 export function resolveTripType(text) {
@@ -43,11 +43,16 @@ export function resolveTripType(text) {
   return 'customer'
 }
 
-// Defaults to "Planned" when the column is blank or unrecognized.
+// Defaults to "Planned" when the column is blank or unrecognized. Checked in a specific
+// order since some values overlap as substrings (e.g. "driver" isn't in any other status).
 export function resolveStatus(text) {
   const value = String(text ?? '').trim().toLowerCase()
+  if (value.includes('reject')) return 'rejected'
+  if (value.includes('cancel')) return 'cancelled'
   if (value.includes('deliver')) return 'delivered'
   if (value.includes('transit')) return 'in_transit'
+  if (value.includes('load')) return 'loaded'
+  if (value.includes('driver')) return 'waiting_driver'
   return 'planned'
 }
 
@@ -74,8 +79,12 @@ export function isRowBlank(rawRow) {
 /**
  * Converts one raw sheet row (keyed by whatever headers the workbook used) into the
  * normalized shape the rest of the importer and TripsContext.importTrips understand.
+ * `masterData` ({customers, transporters, warehouses}, each live from Supabase) is required
+ * so Customer/Transporter/Warehouse names in the sheet resolve to real UUIDs -- a name that
+ * doesn't match any live record (e.g. an old demo-only name) simply won't match, surfacing
+ * as "Unknown Customer/Warehouse" in excelValidator.js, same as any other unrecognized name.
  */
-export function mapExcelRow(rawRow) {
+export function mapExcelRow(rawRow, masterData) {
   const lookup = new Map(Object.entries(rawRow).map(([key, value]) => [normalizeHeader(key), value]))
   const get = (field) => {
     const raw = lookup.get(normalizeHeader(field))
@@ -90,13 +99,14 @@ export function mapExcelRow(rawRow) {
   const dispatchDateRaw = get('Dispatch Date')
   const deliveryDateRaw = get('Delivery Date')
 
-  const customerMatch = findCustomerByName(customerRaw)
-  const warehouseMatch = findWarehouseByName(sourceWarehouseRaw)
-  const transporterMatch = findTransporterByName(transporterRaw)
+  const customerMatch = findCustomerByName(customerRaw, masterData.customers)
+  const warehouseMatch = findWarehouseByName(sourceWarehouseRaw, masterData.warehouses)
+  const transporterMatch = findTransporterByName(transporterRaw, masterData.transporters)
   // Soft, best-effort match: the sheet only has a free-text "Destination" column, but
   // when it happens to name a known warehouse (typical for internal transfers) we can
   // still link it so the app's warehouse filters pick the trip up.
-  const destinationWarehouseMatch = tripType === 'internal' ? findWarehouseByName(destination) : null
+  const destinationWarehouseMatch =
+    tripType === 'internal' ? findWarehouseByName(destination, masterData.warehouses) : null
 
   return {
     salesNo: get('Sales No'),

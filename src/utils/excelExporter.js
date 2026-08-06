@@ -1,5 +1,3 @@
-import { getCustomer, getTransporter, getWarehouse } from '../data/lookup'
-
 const TRIP_TYPE_LABELS = {
   customer: 'Customer Delivery',
   internal: 'Internal Transfer',
@@ -7,20 +5,26 @@ const TRIP_TYPE_LABELS = {
 
 const STATUS_LABELS = {
   planned: 'Planned',
+  waiting_driver: 'Waiting Driver',
+  loaded: 'Loaded',
   in_transit: 'In Transit',
   delivered: 'Delivered',
+  cancelled: 'Cancelled',
+  rejected: 'Rejected',
 }
 
 // Mirrors the columns the importer recognizes (see excelMapper.js), so a file exported
-// here can be re-imported without any manual re-mapping.
+// here can be re-imported without any manual re-mapping. Reads the names TripsContext
+// already resolved against live Supabase master data (see lib/tripsMapping.js) rather than
+// looking them up again here.
 function tripToRow(trip) {
   return {
     'Sales No': trip.salesNo,
     'Trip Type': TRIP_TYPE_LABELS[trip.tripType] ?? trip.tripType,
-    Customer: trip.tripType === 'customer' ? getCustomer(trip.customerId)?.name ?? '' : '',
-    'Source Warehouse': getWarehouse(trip.sourceWarehouseId)?.name ?? '',
+    Customer: trip.tripType === 'customer' ? trip.customerName ?? '' : '',
+    'Source Warehouse': trip.sourceWarehouseName ?? '',
     Destination: trip.destination,
-    Transporter: getTransporter(trip.transporterId)?.name ?? '',
+    Transporter: trip.transporterName ?? '',
     Driver: trip.driver?.name ?? '',
     'Driver Phone': trip.driver?.phone ?? '',
     'Plate No': trip.plateNo ?? '',

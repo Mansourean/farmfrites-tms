@@ -6,7 +6,7 @@ import { validateMappedRow } from '../utils/excelValidator'
 // never blocks the UI. Progress messages let the dialog show a live counter for large
 // files; the final "done" message carries the full categorized result.
 self.onmessage = (event) => {
-  const { fileBuffer, existingSalesNos } = event.data
+  const { fileBuffer, existingSalesNos, masterData } = event.data
 
   try {
     const workbook = XLSX.read(fileBuffer, { type: 'array', cellDates: true })
@@ -36,7 +36,7 @@ self.onmessage = (event) => {
         continue
       }
 
-      const data = mapExcelRow(rawRow)
+      const data = mapExcelRow(rawRow, masterData)
       const errors = validateMappedRow(data)
 
       if (errors.length > 0) {

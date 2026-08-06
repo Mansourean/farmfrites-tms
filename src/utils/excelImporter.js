@@ -11,7 +11,7 @@ export function hasAcceptedExtension(filename) {
  *   { totalRows, skippedEmpty, validRows, invalidRows, duplicateRows }
  * `onProgress({ processed, total })` fires periodically while large files are scanned.
  */
-export function parseExcelFile(file, { existingSalesNos = [], onProgress } = {}) {
+export function parseExcelFile(file, { existingSalesNos = [], masterData, onProgress } = {}) {
   return new Promise((resolve, reject) => {
     if (!hasAcceptedExtension(file.name)) {
       reject(new Error('Please select a .xlsx or .xls file.'))
@@ -42,7 +42,7 @@ export function parseExcelFile(file, { existingSalesNos = [], onProgress } = {})
 
     const reader = new FileReader()
     reader.onload = () => {
-      worker.postMessage({ fileBuffer: reader.result, existingSalesNos }, [reader.result])
+      worker.postMessage({ fileBuffer: reader.result, existingSalesNos, masterData }, [reader.result])
     }
     reader.onerror = () => {
       reject(new Error('Could not read the file.'))

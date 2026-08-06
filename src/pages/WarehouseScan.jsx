@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useTrips } from '../context/TripsContext'
+import { useAuth } from '../context/AuthContext'
+import { canEdit } from '../data/roles'
 import { originLabel, transporterName } from '../data/lookup'
 import { Icon } from '../components/ui/Icon'
 
@@ -11,6 +14,8 @@ function normalizePlateGuess(rawText) {
 
 export function WarehouseScan() {
   const { findTripByPlate, markLoaded, rejectLoad } = useTrips()
+  const { currentUser } = useAuth()
+  const editable = canEdit(currentUser?.role)
   const videoRef = useRef(null)
   const streamRef = useRef(null)
 
@@ -23,6 +28,8 @@ export function WarehouseScan() {
   const [rejecting, setRejecting] = useState(false)
   const [reason, setReason] = useState('')
   const [result, setResult] = useState(null) // { type: 'loaded' | 'rejected', trip }
+  const [submitting, setSubmitting] = useState(false)
+  const [actionError, setActionError] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -83,6 +90,7 @@ export function WarehouseScan() {
   const handleMatch = (e) => {
     e?.preventDefault()
     if (!plate.trim()) return
+    setActionError('')
     const found = findTripByPlate(plate)
     if (found) {
       setTrip(found)
@@ -93,16 +101,32 @@ export function WarehouseScan() {
     }
   }
 
-  const handleLoaded = () => {
-    markLoaded(trip.id)
-    setResult({ type: 'loaded', trip })
+  const handleLoaded = async () => {
+    setActionError('')
+    setSubmitting(true)
+    try {
+      const updated = await markLoaded(trip.id)
+      setResult({ type: 'loaded', trip: updated })
+    } catch (err) {
+      setActionError(err.message || 'Could not confirm loading for this trip.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
-  const handleRejectSubmit = (e) => {
+  const handleRejectSubmit = async (e) => {
     e.preventDefault()
     if (!reason.trim()) return
-    rejectLoad(trip.id, reason.trim())
-    setResult({ type: 'rejected', trip })
+    setActionError('')
+    setSubmitting(true)
+    try {
+      const updated = await rejectLoad(trip.id, reason.trim())
+      setResult({ type: 'rejected', trip: updated })
+    } catch (err) {
+      setActionError(err.message || 'Could not reject this load.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const reset = () => {
@@ -113,6 +137,7 @@ export function WarehouseScan() {
     setReason('')
     setResult(null)
     setScanError('')
+    setActionError('')
   }
 
   return (
@@ -143,6 +168,9 @@ export function WarehouseScan() {
           >
             Scan Next Truck
           </button>
+          <Link to="/" className="mt-2 text-[13px] font-medium text-white/60 hover:text-white/80">
+            Back to Transportation Log
+          </Link>
         </div>
       ) : trip ? (
         <div className="flex flex-1 flex-col px-5 py-6">
@@ -157,12 +185,21 @@ export function WarehouseScan() {
             </div>
           </div>
 
-          {!rejecting ? (
+          {actionError && (
+            <p className="mt-4 rounded-lg bg-[#4A1412] px-3 py-2 text-[12.5px] font-medium text-[#FF8A80]">{actionError}</p>
+          )}
+
+          {!editable ? (
+            <p className="mt-auto pt-8 text-center text-[13px] text-white/50">
+              Your role does not have permission to confirm or reject loading.
+            </p>
+          ) : !rejecting ? (
             <div className="mt-auto grid grid-cols-2 gap-3 pt-8">
               <button
                 type="button"
                 onClick={() => setRejecting(true)}
-                className="flex flex-col items-center justify-center gap-2 rounded-2xl bg-[#E5484D] py-8 text-[16px] font-semibold"
+                disabled={submitting}
+                className="flex flex-col items-center justify-center gap-2 rounded-2xl bg-[#E5484D] py-8 text-[16px] font-semibold disabled:opacity-60"
               >
                 <Icon name="x" className="h-7 w-7" strokeWidth={2.5} />
                 Reject
@@ -170,10 +207,11 @@ export function WarehouseScan() {
               <button
                 type="button"
                 onClick={handleLoaded}
-                className="flex flex-col items-center justify-center gap-2 rounded-2xl bg-[#1E9E6A] py-8 text-[16px] font-semibold"
+                disabled={submitting}
+                className="flex flex-col items-center justify-center gap-2 rounded-2xl bg-[#1E9E6A] py-8 text-[16px] font-semibold disabled:opacity-60"
               >
                 <Icon name="check" className="h-7 w-7" strokeWidth={2.5} />
-                Loaded
+                {submitting ? 'Confirming…' : 'Loaded'}
               </button>
             </div>
           ) : (
@@ -190,11 +228,16 @@ export function WarehouseScan() {
                 />
               </label>
               <div className="grid grid-cols-2 gap-3">
-                <button type="button" onClick={() => setRejecting(false)} className="rounded-lg border border-white/20 py-3 text-[14px] font-medium">
+                <button
+                  type="button"
+                  onClick={() => setRejecting(false)}
+                  disabled={submitting}
+                  className="rounded-lg border border-white/20 py-3 text-[14px] font-medium disabled:opacity-60"
+                >
                   Back
                 </button>
-                <button type="submit" className="rounded-lg bg-[#E5484D] py-3 text-[14px] font-semibold">
-                  Confirm Reject
+                <button type="submit" disabled={submitting} className="rounded-lg bg-[#E5484D] py-3 text-[14px] font-semibold disabled:opacity-60">
+                  {submitting ? 'Rejecting…' : 'Confirm Reject'}
                 </button>
               </div>
             </form>

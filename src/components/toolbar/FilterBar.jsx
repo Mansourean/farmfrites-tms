@@ -1,5 +1,4 @@
-import { transporters } from '../../data/transporters'
-import { warehouses } from '../../data/warehouses'
+import { useTrips } from '../../context/TripsContext'
 import { Icon } from '../ui/Icon'
 import { FilterDropdown } from './FilterDropdown'
 import { DateFilter } from './DateFilter'
@@ -7,9 +6,13 @@ import { ColumnManager } from './ColumnManager'
 
 const statusOptions = [
   { value: 'all', label: 'All statuses' },
-  { value: 'planned', label: 'Planned', dot: '#E3A008' },
+  { value: 'rejected', label: 'Rejected', dot: '#D92D20' },
+  { value: 'planned', label: 'Planned', dot: '#0E7490' },
+  { value: 'waiting_driver', label: 'Waiting Driver', dot: '#B08900' },
+  { value: 'loaded', label: 'Loaded', dot: '#6B3FA0' },
   { value: 'in_transit', label: 'In Transit', dot: '#2F6FE4' },
   { value: 'delivered', label: 'Delivered', dot: '#1E9E6A' },
+  { value: 'cancelled', label: 'Cancelled', dot: '#B42318' },
 ]
 
 const tripTypeOptions = [
@@ -19,6 +22,7 @@ const tripTypeOptions = [
 ]
 
 export function FilterBar({ title, count, filters, onFilterChange, onExport }) {
+  const { transporters, warehouses } = useTrips()
   const transporterOptions = [
     { value: 'all', label: 'All transporters' },
     ...transporters.map((t) => ({ value: t.id, label: t.name })),

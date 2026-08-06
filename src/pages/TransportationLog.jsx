@@ -18,7 +18,7 @@ const defaultFilters = {
 }
 
 export function TransportationLog() {
-  const { trips } = useTrips()
+  const { trips, loading, error, reload } = useTrips()
   const [filters, setFilters] = useState(defaultFilters)
 
   const filtered = useMemo(() => {
@@ -53,6 +53,29 @@ export function TransportationLog() {
     })
     return sortTrips(matches)
   }, [trips, filters])
+
+  if (loading) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <p className="text-[13px] text-text-muted">Loading trips…</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-3">
+        <p className="text-[13px] text-[#B42318]">Could not load trips: {error}</p>
+        <button
+          type="button"
+          onClick={reload}
+          className="rounded-md bg-text-primary px-3.5 py-1.5 text-[13px] font-medium text-white hover:bg-[#333331]"
+        >
+          Retry
+        </button>
+      </div>
+    )
+  }
 
   return (
     <ColumnsProvider>

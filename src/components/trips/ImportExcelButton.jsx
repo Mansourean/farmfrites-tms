@@ -6,7 +6,7 @@ import { Icon } from '../ui/Icon'
 import { ExcelImportDialog } from './ExcelImportDialog'
 
 export function ImportExcelButton() {
-  const { importTrips, getSalesNumbers } = useTrips()
+  const { importTrips, getSalesNumbers, customers, transporters, warehouses } = useTrips()
   const { notify } = useToast()
   const inputRef = useRef(null)
 
@@ -37,7 +37,10 @@ export function ImportExcelButton() {
     notify('Import started…', { type: 'info' })
 
     try {
-      const parsed = await parseExcelFile(file, { existingSalesNos: getSalesNumbers() })
+      const parsed = await parseExcelFile(file, {
+        existingSalesNos: getSalesNumbers(),
+        masterData: { customers, transporters, warehouses },
+      })
       setFileName(file.name)
       setResult(parsed)
       setStage('preview')

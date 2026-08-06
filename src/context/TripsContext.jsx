@@ -1,7 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { useLocalStorage } from '../hooks/useLocalStorage'
-import { initialTrips } from '../data/trips'
 import { generateId, generateToken } from '../utils/id'
+import { fetchMasterData } from '../services/masterData'
+import { fetchTripRows, insertTripRow, insertTripRows, updateTripRow, deleteTripRow } from '../services/tripsApi'
+import { markTripLoaded, rejectTripLoad } from '../services/tripActions'
+import { dbRowToTrip, tripPatchToDbRow } from '../lib/tripsMapping'
 
 const TripsContext = createContext(null)
 
@@ -10,39 +12,79 @@ function nowIso() {
 }
 
 export function TripsProvider({ children }) {
-  const [trips, setTrips] = useLocalStorage('ff-tms-trips', initialTrips)
+  const [trips, setTrips] = useState([])
+  const [masterData, setMasterData] = useState({ customers: [], transporters: [], warehouses: [], destinations: [] })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  // Flags trips whose data just changed (locally or synced in from another tab, e.g.
-  // a transporter submitting the WhatsApp form) so the UI can pulse a "live update" highlight.
+  // Flags trips whose data just changed *in this session* (own writes only -- see the Phase 2
+  // report on why this no longer fires for other tabs/devices the way the old localStorage
+  // version did) so the UI can pulse a "live update" highlight.
   const [justUpdated, setJustUpdated] = useState(() => new Set())
   const prevTripsRef = useRef(trips)
 
-  useEffect(() => {
-    const prevById = new Map(prevTripsRef.current.map((t) => [t.id, t]))
-    const changedIds = trips.filter((trip) => {
-      const prev = prevById.get(trip.id)
-      return prev && prev !== trip
-    }).map((trip) => trip.id)
-    prevTripsRef.current = trips
-
-    if (changedIds.length === 0) return
-
-    setJustUpdated((prev) => new Set([...prev, ...changedIds]))
-    const timer = setTimeout(() => {
+  const pulseUpdated = useCallback((ids) => {
+    setJustUpdated((prev) => new Set([...prev, ...ids]))
+    setTimeout(() => {
       setJustUpdated((prev) => {
         const next = new Set(prev)
-        changedIds.forEach((id) => next.delete(id))
+        ids.forEach((id) => next.delete(id))
         return next
       })
     }, 3000)
-    return () => clearTimeout(timer)
+  }, [])
+
+  useEffect(() => {
+    prevTripsRef.current = trips
   }, [trips])
+
+  // By-id name lookups derived from whatever master data is currently loaded -- shared by
+  // load()/createTrip()/importTrips()/updateTrip() so a trip's customer/transporter/warehouse
+  // name is resolved consistently everywhere, including immediately after a create/edit
+  // (not just after the next full reload).
+  const makeNameResolver = useCallback((md) => {
+    const customersById = new Map(md.customers.map((c) => [c.id, c.name]))
+    const transportersById = new Map(md.transporters.map((t) => [t.id, t.name]))
+    const warehousesById = new Map(md.warehouses.map((w) => [w.id, w.name]))
+    return (row) => ({
+      customerName: row.customer_id ? customersById.get(row.customer_id) ?? null : null,
+      sourceWarehouseName: row.source_warehouse_id ? warehousesById.get(row.source_warehouse_id) ?? null : null,
+      transporterName: row.transporter_id ? transportersById.get(row.transporter_id) ?? null : null,
+    })
+  }, [])
+
+  const resolveNames = useMemo(() => makeNameResolver(masterData), [makeNameResolver, masterData])
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const [md, rows] = await Promise.all([fetchMasterData(), fetchTripRows()])
+      setMasterData(md)
+      const namesFor = makeNameResolver(md)
+      setTrips(rows.map((row) => dbRowToTrip(row, namesFor(row))))
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }, [makeNameResolver])
+
+  // Phase 4: refreshes only the master-data lists (after an inline "+" creation in TripPanel)
+  // without touching `trips` -- a full load() would be wasteful here and would also briefly
+  // flip `loading`, which TransportationLog renders as a full-page loading state.
+  const refreshMasterData = useCallback(async () => {
+    const md = await fetchMasterData()
+    setMasterData(md)
+  }, [])
+
+  useEffect(() => {
+    load()
+  }, [load])
 
   const patchTrip = useCallback(
     (id, updater) => {
-      setTrips((prev) =>
-        prev.map((trip) => (trip.id === id ? { ...trip, ...updater(trip) } : trip)),
-      )
+      setTrips((prev) => prev.map((trip) => (trip.id === id ? { ...trip, ...updater(trip) } : trip)))
     },
     [setTrips],
   )
@@ -50,51 +92,12 @@ export function TripsProvider({ children }) {
   const addTimelineEvent = useCallback(
     (id, label, actor = 'System') => {
       patchTrip(id, (trip) => ({
-        timeline: [
-          ...trip.timeline,
-          { id: generateId('evt'), label, actor, timestamp: nowIso() },
-        ],
+        timeline: [...trip.timeline, { id: generateId('evt'), label, actor, timestamp: nowIso() }],
       }))
     },
     [patchTrip],
   )
 
-  const createTrip = useCallback(
-    (data) => {
-      const id = generateId('trip')
-      const trip = {
-        id,
-        // Sales No is the business key from Sales/SAP/ERP — it is never generated or
-        // auto-incremented here, only ever taken from what the user (or an import) provides.
-        salesNo: data.salesNo,
-        tripType: data.tripType,
-        customerId: data.tripType === 'customer' ? data.customerId : null,
-        sourceWarehouseId: data.sourceWarehouseId,
-        destinationWarehouseId: data.tripType === 'internal' ? data.destinationWarehouseId : null,
-        destination: data.destination,
-        loadTons: data.loadTons,
-        transporterId: data.transporterId,
-        driver: data.driver ?? null,
-        plateNo: data.plateNo ?? '',
-        vehicleType: data.vehicleType ?? '',
-        dispatchDate: data.dispatchDate,
-        deliveryDate: data.deliveryDate,
-        status: 'planned',
-        remarks: data.remarks ?? '',
-        documents: [],
-        timeline: [{ id: generateId('evt'), label: 'Trip created', actor: 'S. Al-Qahtani', timestamp: nowIso() }],
-        whatsapp: null,
-        // Always exceeds any seed trip's sequence number, so new trips sort first.
-        createdSeq: Date.now(),
-      }
-      setTrips((prev) => [trip, ...prev])
-      return trip
-    },
-    [setTrips],
-  )
-
-  // Every current Sales No, used by the Excel importer (and manual Create/Edit forms) to
-  // flag duplicates before saving.
   const getSalesNumbers = useCallback(() => trips.map((trip) => trip.salesNo), [trips])
 
   const isSalesNoTaken = useCallback(
@@ -105,99 +108,109 @@ export function TripsProvider({ children }) {
     [trips],
   )
 
-  const deleteTrip = useCallback(
-    (id) => {
-      setTrips((prev) => prev.filter((trip) => trip.id !== id))
+  const createTrip = useCallback(
+    async (data) => {
+      const row = tripPatchToDbRow(data)
+      const created = await insertTripRow(row)
+      const trip = dbRowToTrip(created, resolveNames(created))
+      setTrips((prev) => [trip, ...prev])
+      return trip
     },
-    [setTrips],
+    [resolveNames],
   )
 
-  // Bulk-creates trips from validated Excel rows (see excelImporter/excelMapper). Large
-  // imports are committed a chunk at a time across animation frames rather than in one
-  // giant setTrips call — the table still ends up rendering every row either way, but
-  // spreading that work over several frames keeps the browser free to paint/respond in
-  // between instead of doing it all in a single unbroken block. `createdSeq` (see
-  // createTrip) makes the chunk order irrelevant: every row still sorts correctly by
-  // creation time regardless of which chunk it landed in.
   const importTrips = useCallback(
-    (rows, { onProgress, chunkSize = 1500 } = {}) => {
-      return new Promise((resolve) => {
-        const total = rows.length
-        if (total === 0) {
-          resolve([])
-          return
-        }
+    async (rows, { onProgress, chunkSize = 500 } = {}) => {
+      const total = rows.length
+      if (total === 0) return []
 
-        const base = Date.now()
-        const timestamp = nowIso()
-        const allNewTrips = new Array(total)
-        let index = 0
+      const allCreated = []
+      for (let index = 0; index < total; index += chunkSize) {
+        const chunk = rows.slice(index, index + chunkSize).map(tripPatchToDbRow)
+        // eslint-disable-next-line no-await-in-loop -- intentionally sequential: keeps each
+        // insert a reasonable size and lets progress reporting reflect real completed work.
+        const createdRows = await insertTripRows(chunk)
+        allCreated.push(...createdRows)
+        onProgress?.({ processed: Math.min(index + chunkSize, total), total })
+      }
 
-        function processChunk() {
-          const end = Math.min(index + chunkSize, total)
-          const chunk = []
-          for (let i = index; i < end; i += 1) {
-            const data = rows[i]
-            const trip = {
-              id: generateId('trip'),
-              salesNo: data.salesNo,
-              tripType: data.tripType,
-              customerId: data.tripType === 'customer' ? data.customerId : null,
-              sourceWarehouseId: data.sourceWarehouseId ?? null,
-              destinationWarehouseId: data.tripType === 'internal' ? data.destinationWarehouseId ?? null : null,
-              destination: data.destination,
-              loadTons: 0,
-              transporterId: data.transporterId ?? null,
-              driver: data.driverName ? { name: data.driverName, phone: data.driverPhone ?? '' } : null,
-              plateNo: data.plateNo ?? '',
-              vehicleType: '',
-              dispatchDate: data.dispatchDate,
-              deliveryDate: data.deliveryDate || data.dispatchDate,
-              status: data.status ?? 'planned',
-              remarks: data.remarks ?? '',
-              documents: [],
-              timeline: [{ id: generateId('evt'), label: 'Imported from Excel', actor: 'Excel Import', timestamp }],
-              whatsapp: null,
-              // Descending per row so the sheet's own order is preserved (row 1 lands on
-              // top), while every imported row still outranks pre-existing trips (see createTrip).
-              createdSeq: base - i,
-            }
-            allNewTrips[i] = trip
-            chunk.push(trip)
-          }
-          index = end
-
-          setTrips((prev) => [...chunk, ...prev])
-          onProgress?.({ processed: index, total })
-
-          if (index < total) requestAnimationFrame(processChunk)
-          else resolve(allNewTrips)
-        }
-
-        processChunk()
-      })
+      const createdTrips = allCreated.map((row) => dbRowToTrip(row, resolveNames(row)))
+      setTrips((prev) => [...createdTrips, ...prev])
+      return createdTrips
     },
-    [setTrips],
+    [resolveNames],
   )
+
+  const deleteTrip = useCallback(async (id) => {
+    await deleteTripRow(id)
+    setTrips((prev) => prev.filter((trip) => trip.id !== id))
+  }, [])
 
   const updateTrip = useCallback(
-    (id, patch) => {
-      patchTrip(id, (trip) => {
-        if (patch.status === 'delivered' && trip.status !== 'delivered') {
-          return {
-            ...patch,
-            timeline: [
-              ...trip.timeline,
-              { id: generateId('evt'), label: 'Delivered to customer', actor: 'S. Al-Qahtani', timestamp: nowIso() },
-            ],
-          }
-        }
-        return patch
-      })
+    async (id, patch) => {
+      const row = tripPatchToDbRow(patch)
+      const updated = await updateTripRow(id, row)
+      const trip = dbRowToTrip(updated, resolveNames(updated))
+      setTrips((prev) => prev.map((t) => (t.id === id ? trip : t)))
+      pulseUpdated([id])
+      if (patch.status === 'delivered') {
+        addTimelineEvent(id, 'Delivered to customer', 'S. Al-Qahtani')
+      }
+      return trip
     },
-    [patchTrip],
+    [resolveNames, pulseUpdated, addTimelineEvent],
   )
 
+  // Matching filter unchanged from before Phase 3 -- still only surfaces 'planned'/'in_transit'
+  // trips to the warehouse scanner (see the Phase 3 report on why 'waiting_driver' is
+  // deliberately not included here or in mark_trip_loaded's DB-side eligibility check).
+  const findTripByPlate = useCallback(
+    (plate) => {
+      const normalized = plate.trim().toUpperCase().replace(/\s+/g, '')
+      if (!normalized) return null
+      return trips.find(
+        (trip) =>
+          ['planned', 'in_transit'].includes(trip.status) &&
+          trip.plateNo.toUpperCase().replace(/\s+/g, '').includes(normalized),
+      )
+    },
+    [trips],
+  )
+
+  // Phase 3: real Supabase persistence via the mark_trip_loaded/reject_trip_load RPCs (see
+  // supabase/migrations/0007_trip_loading_rpc.sql, 0008_reject_status.sql) -- the RPC is the
+  // sole write path, and its own server-side checks (identity/role/active-status/trip status)
+  // are the real security boundary, not anything here. Neither function pushes an optimistic
+  // timeline entry anymore -- TripPanel's Timeline tab now reads the real, durable
+  // trip_events row instead, avoiding a duplicate local+real entry for the same action.
+  const markLoaded = useCallback(
+    async (id) => {
+      const row = await markTripLoaded(id)
+      const trip = dbRowToTrip(row, resolveNames(row))
+      setTrips((prev) => prev.map((t) => (t.id === id ? trip : t)))
+      pulseUpdated([id])
+      return trip
+    },
+    [resolveNames, pulseUpdated],
+  )
+
+  // 0008: reject_trip_load now moves the trip to 'Rejected' (was previously audit-only, no
+  // status change) and returns the updated row -- consumed the same way markLoaded consumes
+  // its RPC's return value, so a rejection is reflected in local state immediately.
+  const rejectLoad = useCallback(
+    async (id, reason) => {
+      const row = await rejectTripLoad(id, reason)
+      const trip = dbRowToTrip(row, resolveNames(row))
+      setTrips((prev) => prev.map((t) => (t.id === id ? trip : t)))
+      pulseUpdated([id])
+      return trip
+    },
+    [resolveNames, pulseUpdated],
+  )
+
+  // Unchanged logic -- still an in-memory-only mechanism. Now that `trips` only populates for
+  // authenticated sessions (RLS requires it), the public /whatsapp/:token page (which is
+  // unauthenticated) will not find any trip here -- a known limitation, see the Phase 2 report.
   const requestWhatsapp = useCallback(
     (id) => {
       const token = generateToken()
@@ -208,10 +221,7 @@ export function TripsProvider({ children }) {
     [patchTrip, addTimelineEvent],
   )
 
-  const getTripByToken = useCallback(
-    (token) => trips.find((trip) => trip.whatsapp?.token === token),
-    [trips],
-  )
+  const getTripByToken = useCallback((token) => trips.find((trip) => trip.whatsapp?.token === token), [trips])
 
   const submitWhatsappUpdate = useCallback(
     (token, details) => {
@@ -229,34 +239,6 @@ export function TripsProvider({ children }) {
     [trips, patchTrip, addTimelineEvent],
   )
 
-  const findTripByPlate = useCallback(
-    (plate) => {
-      const normalized = plate.trim().toUpperCase().replace(/\s+/g, '')
-      if (!normalized) return null
-      return trips.find(
-        (trip) =>
-          ['planned', 'in_transit'].includes(trip.status) &&
-          trip.plateNo.toUpperCase().replace(/\s+/g, '').includes(normalized),
-      )
-    },
-    [trips],
-  )
-
-  const markLoaded = useCallback(
-    (id) => {
-      patchTrip(id, (trip) => ({ status: trip.status === 'planned' ? 'in_transit' : trip.status }))
-      addTimelineEvent(id, 'Loaded and verified at warehouse', 'Warehouse scan')
-    },
-    [patchTrip, addTimelineEvent],
-  )
-
-  const rejectLoad = useCallback(
-    (id, reason) => {
-      addTimelineEvent(id, `Load rejected at warehouse — ${reason}`, 'Warehouse scan')
-    },
-    [addTimelineEvent],
-  )
-
   const setCustomFieldValue = useCallback(
     (id, columnId, fieldValue) => {
       patchTrip(id, (trip) => ({
@@ -269,6 +251,14 @@ export function TripsProvider({ children }) {
   const value = useMemo(
     () => ({
       trips,
+      loading,
+      error,
+      reload: load,
+      customers: masterData.customers,
+      transporters: masterData.transporters,
+      warehouses: masterData.warehouses,
+      destinations: masterData.destinations,
+      refreshMasterData,
       justUpdated,
       createTrip,
       importTrips,
@@ -287,6 +277,11 @@ export function TripsProvider({ children }) {
     }),
     [
       trips,
+      loading,
+      error,
+      load,
+      masterData,
+      refreshMasterData,
       justUpdated,
       createTrip,
       importTrips,
