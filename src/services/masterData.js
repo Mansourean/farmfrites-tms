@@ -16,9 +16,10 @@ export async function fetchMasterData() {
   const [customers, transporters, warehouses, destinations] = await Promise.all([
     fetchList('customers', 'customer_code', 'customer_name'),
     fetchList('transporters', 'transporter_code', 'transporter_name'),
-    // isActive is read only for warehouses, so New Trip can auto-default Source Warehouse when
-    // exactly one is active (see TripPanel.jsx) without hard-coding any warehouse's identity.
-    fetchList('warehouses', 'warehouse_code', 'warehouse_name', ', isActive:is_active'),
+    // isActive powers New Trip's single-active-warehouse auto-default (see TripPanel.jsx);
+    // city is read so the Destination Warehouse dropdown can disambiguate same-named
+    // warehouses across cities (e.g. "Warehouse A -- Jeddah" vs "Warehouse A -- Riyadh").
+    fetchList('warehouses', 'warehouse_code', 'warehouse_name', ', isActive:is_active, city'),
     fetchList('destinations', 'destination_code', 'destination_name'),
   ])
   return { customers, transporters, warehouses, destinations }

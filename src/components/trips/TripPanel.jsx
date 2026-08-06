@@ -365,7 +365,7 @@ export function TripPanel() {
               {form.tripType === 'customer' ? (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <Field
-                    label="Customer"
+                    label="Client"
                     action={canAddMasterData && (
                       <AddButton label="Add customer" onClick={() => setAddModal({ entityType: 'customer', field: 'customerId' })} />
                     )}
@@ -426,9 +426,11 @@ export function TripPanel() {
                         Select warehouse…
                       </option>
                     )}
+                    {/* "Name -- City" so future same-named warehouses in different cities stay
+                        distinguishable (e.g. "Warehouse A -- Jeddah" vs "Warehouse A -- Riyadh"). */}
                     {warehouses.map((w) => (
                       <option key={w.id} value={w.id}>
-                        {w.name}
+                        {w.city ? `${w.name} — ${w.city}` : w.name}
                       </option>
                     ))}
                   </select>
@@ -532,7 +534,7 @@ export function TripPanel() {
 
               {trip.tripType === 'customer' && (
                 <section>
-                  <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-text-faint">Customer</p>
+                  <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-text-faint">Client</p>
                   <div className="rounded-lg border border-border p-3 text-[13px]">
                     <p className="font-medium text-text-primary">{originName}</p>
                   </div>
