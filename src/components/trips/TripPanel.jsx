@@ -87,7 +87,7 @@ function formFromTrip(trip, { customers, warehouses }) {
 
 function Field({ label, action, children }) {
   return (
-    <label className="flex flex-col gap-1.5">
+    <label className="flex flex-col gap-1">
       <span className="flex items-center justify-between gap-2">
         <span className="text-[11px] font-medium uppercase tracking-wide text-text-faint">{label}</span>
         {action}
@@ -108,15 +108,15 @@ function AddButton({ onClick, label }) {
         onClick()
       }}
       title={label}
-      className="rounded p-0.5 text-text-muted hover:bg-surface-hover hover:text-text-primary"
+      className="grid h-5 w-5 shrink-0 place-items-center rounded-md border border-accent-green-100 bg-accent-green-50 text-accent-green-600 hover:bg-accent-green-100"
     >
-      <Icon name="plus" className="h-3 w-3" />
+      <Icon name="plus" className="h-3 w-3" strokeWidth={2.5} />
     </button>
   )
 }
 
 const inputClass =
-  'rounded-md border border-border-strong bg-white px-2.5 py-[7px] text-[13px] text-text-primary outline-none focus:border-brand-400'
+  'rounded-md border border-border-strong bg-white px-2.5 py-1.5 text-[13px] text-text-primary outline-none focus:border-accent-green-500'
 
 export function TripPanel() {
   const { open, mode, tripId, tab, close, openView } = useTripPanel()
@@ -329,7 +329,7 @@ export function TripPanel() {
 
         <div className="flex-1 overflow-y-auto px-5 py-5">
           {isEditing ? (
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3">
               <Field label="Sales No">
                 <input
                   className={inputClass}
@@ -352,7 +352,7 @@ export function TripPanel() {
                       onClick={() => setForm((f) => ({ ...f, tripType: option.value }))}
                       className={`flex-1 rounded-[5px] px-2 py-1.5 text-[12.5px] font-medium transition-colors ${
                         form.tripType === option.value
-                          ? 'bg-text-primary text-white'
+                          ? 'bg-accent-green-500 text-white'
                           : 'text-text-secondary hover:bg-surface-hover'
                       }`}
                     >
@@ -380,7 +380,7 @@ export function TripPanel() {
                   </Field>
 
                   <Field
-                    label="Destination"
+                    label="Destination (City)"
                     action={canAddMasterData && (
                       <AddButton label="Add destination" onClick={() => setAddModal({ entityType: 'destination', field: 'destination' })} />
                     )}
@@ -472,39 +472,39 @@ export function TripPanel() {
                 />
               </Field>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <Field label="Driver Name">
                   <input className={inputClass} value={form.driverName} onChange={set('driverName')} placeholder="Optional" />
                 </Field>
                 <Field label="Driver Phone">
                   <input className={inputClass} value={form.driverPhone} onChange={set('driverPhone')} placeholder="Optional" />
                 </Field>
+                <Field label="Plate No">
+                  <input className={inputClass} value={form.plateNo} onChange={set('plateNo')} placeholder="Optional" />
+                </Field>
               </div>
 
-              <Field label="Plate No">
-                <input className={inputClass} value={form.plateNo} onChange={set('plateNo')} placeholder="Optional" />
-              </Field>
-
-              <Field label="Status">
-                <select className={inputClass} value={form.status} onChange={set('status')}>
-                  <option value="planned">Planned</option>
-                  <option value="waiting_driver">Waiting Driver</option>
-                  <option value="loaded">Loaded</option>
-                  <option value="in_transit">In Transit</option>
-                  <option value="delivered">Delivered</option>
-                  <option value="cancelled">Cancelled</option>
-                  <option value="rejected">Rejected</option>
-                </select>
-              </Field>
-
-              <Field label="Remarks">
-                <textarea
-                  className={`${inputClass} min-h-[72px] resize-none`}
-                  value={form.remarks}
-                  onChange={set('remarks')}
-                  placeholder="Optional notes for this trip"
-                />
-              </Field>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Field label="Status">
+                  <select className={inputClass} value={form.status} onChange={set('status')}>
+                    <option value="planned">Planned</option>
+                    <option value="waiting_driver">Waiting Driver</option>
+                    <option value="loaded">Loaded</option>
+                    <option value="in_transit">In Transit</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="cancelled">Cancelled</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                </Field>
+                <Field label="Remarks">
+                  <textarea
+                    className={`${inputClass} min-h-[38px] resize-none`}
+                    value={form.remarks}
+                    onChange={set('remarks')}
+                    placeholder="Optional notes"
+                  />
+                </Field>
+              </div>
 
               {error && <p className="rounded-md bg-[#FBE7E5] px-3 py-2 text-[12.5px] font-medium text-[#B42318]">{error}</p>}
             </div>
@@ -708,7 +708,7 @@ export function TripPanel() {
                 type="button"
                 onClick={handleSave}
                 disabled={saving}
-                className="rounded-md bg-text-primary px-3.5 py-1.5 text-[13px] font-medium text-white hover:bg-[#333331] disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-md bg-accent-green-500 px-3.5 py-1.5 text-[13px] font-medium text-white hover:bg-accent-green-600 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {saving ? 'Saving…' : mode === 'create' ? 'Create Trip' : 'Save Changes'}
               </button>

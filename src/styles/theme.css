@@ -30,6 +30,14 @@
   --color-brand-600: #4f46e5;
   --color-brand-700: #4338ca;
 
+  /* Farm Frites green accent -- scoped to New Trip's own components only (TripPanel.jsx,
+     AddMasterDataModal.jsx); existing brand-* tokens above are untouched and keep powering
+     everything else in the app. */
+  --color-accent-green-50: #eaf9ee;
+  --color-accent-green-100: #d2f0da;
+  --color-accent-green-500: #35b653;
+  --color-accent-green-600: #2c9a46;
+
   --spacing-sidebar: 15.5rem;
   --spacing-sidebar-collapsed: 4.5rem;
   --spacing-topbar: 2.75rem;

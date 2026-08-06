@@ -74,7 +74,7 @@ export function AddMasterDataModal({ open, entityType, onClose, onCreated }) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder={config.placeholder}
-                className="rounded-md border border-border-strong bg-white px-2.5 py-[7px] text-[13px] text-text-primary outline-none focus:border-brand-400"
+                className="rounded-md border border-border-strong bg-white px-2.5 py-[7px] text-[13px] text-text-primary outline-none focus:border-accent-green-500"
               />
             </label>
             {error && <p className="mt-3 rounded-md bg-[#FBE7E5] px-3 py-2 text-[12.5px] font-medium text-[#B42318]">{error}</p>}
@@ -92,7 +92,7 @@ export function AddMasterDataModal({ open, entityType, onClose, onCreated }) {
             <button
               type="submit"
               disabled={saving}
-              className="rounded-md bg-text-primary px-3.5 py-1.5 text-[13px] font-medium text-white hover:bg-[#333331] disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-md bg-accent-green-500 px-3.5 py-1.5 text-[13px] font-medium text-white hover:bg-accent-green-600 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {saving ? 'Saving…' : 'Save'}
             </button>
