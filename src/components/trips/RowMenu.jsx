@@ -13,7 +13,6 @@ const editItems = [
 
 const readItems = [
   { key: 'print', label: 'Print', icon: 'printer' },
-  { key: 'documents', label: 'Documents', icon: 'paperclip' },
   { key: 'timeline', label: 'Timeline', icon: 'clock' },
 ]
 
@@ -30,7 +29,6 @@ export function RowMenu({ tripId }) {
     edit: () => openEdit(tripId),
     whatsapp: () => whatsapp.open(tripId),
     print: () => window.open(`/print/trip/${tripId}`, '_blank', 'noopener,noreferrer'),
-    documents: () => openView(tripId, 'documents'),
     timeline: () => openView(tripId, 'timeline'),
     delete: () => deleteTrip.open(tripId),
   }

@@ -16,7 +16,6 @@ import { getInitials } from '../../utils/initials'
 
 const tabs = [
   { key: 'details', label: 'Details' },
-  { key: 'documents', label: 'Documents' },
   { key: 'timeline', label: 'Timeline' },
 ]
 
@@ -46,9 +45,7 @@ function emptyForm({ customers, warehouses, transporters }) {
     sourceWarehouseId: '',
     destinationWarehouseId: singleActiveWarehouseId(warehouses),
     destination: '',
-    deliveryContactName: '',
     deliveryContactMobile: '',
-    loadTons: '',
     transporterId: transporters[0]?.id ?? '',
     driverName: '',
     driverPhone: '',
@@ -75,9 +72,7 @@ function formFromTrip(trip, { customers, warehouses }) {
     sourceWarehouseId: trip.sourceWarehouseId,
     destinationWarehouseId: matchedDestinationWarehouse?.id ?? warehouses[1]?.id ?? warehouses[0]?.id ?? '',
     destination: trip.destination,
-    deliveryContactName: trip.deliveryContactName ?? '',
     deliveryContactMobile: trip.deliveryContactMobile ?? '',
-    loadTons: trip.loadTons,
     transporterId: trip.transporterId,
     driverName: trip.driver?.name ?? '',
     driverPhone: trip.driver?.phone ?? '',
@@ -251,9 +246,12 @@ export function TripPanel() {
       sourceWarehouseId: form.sourceWarehouseId,
       destinationWarehouseId: form.tripType === 'internal' ? form.destinationWarehouseId : null,
       destination,
-      deliveryContactName: form.tripType === 'customer' ? form.deliveryContactName : null,
       deliveryContactMobile: form.tripType === 'customer' ? form.deliveryContactMobile : null,
-      loadTons: Number(form.loadTons) || 0,
+      // loadTons is deliberately omitted -- there is no form control for it anymore (see
+      // TripPanel's Load (Tons) removal), and including it here as 0 would silently zero out
+      // any existing value (from Excel import or earlier entry) on every edit. Leaving the key
+      // out entirely means tripPatchToDbRow's `if ('loadTons' in patch)` guard skips it, so
+      // whatever is already stored is left untouched.
       transporterId: form.transporterId,
       driver: form.driverName ? { name: form.driverName, phone: form.driverPhone } : null,
       plateNo: form.plateNo,
@@ -412,24 +410,14 @@ export function TripPanel() {
                     </Field>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <Field label="Delivery Contact Name">
-                      <input
-                        className={inputClass}
-                        value={form.deliveryContactName}
-                        onChange={set('deliveryContactName')}
-                        placeholder="Optional"
-                      />
-                    </Field>
-                    <Field label="Delivery Contact Mobile">
-                      <input
-                        className={inputClass}
-                        value={form.deliveryContactMobile}
-                        onChange={set('deliveryContactMobile')}
-                        placeholder="Optional"
-                      />
-                    </Field>
-                  </div>
+                  <Field label="Receiver Mobile">
+                    <input
+                      className={inputClass}
+                      value={form.deliveryContactMobile}
+                      onChange={set('deliveryContactMobile')}
+                      placeholder="Optional"
+                    />
+                  </Field>
                 </>
               ) : (
                 // Pilot scope: origin is operationally understood to be the Sudair factory for
@@ -487,17 +475,6 @@ export function TripPanel() {
                   <input type="date" className={inputClass} value={form.deliveryDate} onChange={set('deliveryDate')} />
                 </Field>
               </div>
-
-              <Field label="Load (Tons)">
-                <input
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  className={inputClass}
-                  value={form.loadTons}
-                  onChange={set('loadTons')}
-                />
-              </Field>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <Field label="Driver Name">
@@ -576,12 +553,11 @@ export function TripPanel() {
                 </div>
               </section>
 
-              {trip.tripType === 'customer' && (trip.deliveryContactName || trip.deliveryContactMobile) && (
+              {trip.tripType === 'customer' && trip.deliveryContactMobile && (
                 <section>
-                  <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-text-faint">Delivery Contact</p>
+                  <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-text-faint">Receiver Mobile</p>
                   <div className="rounded-lg border border-border p-3 text-[13px]">
-                    <p className="font-medium text-text-primary">{trip.deliveryContactName || '—'}</p>
-                    <p className="text-text-muted">{trip.deliveryContactMobile || '—'}</p>
+                    <p className="font-medium text-text-primary">{trip.deliveryContactMobile}</p>
                   </div>
                 </section>
               )}
@@ -667,33 +643,6 @@ export function TripPanel() {
                   Confirm Delivery
                 </button>
               )}
-            </div>
-          ) : trip && tab === 'documents' ? (
-            <div className="flex flex-col gap-2">
-              {trip.documents.length === 0 && (
-                <p className="text-[13px] text-text-faint">No documents uploaded for this trip yet.</p>
-              )}
-              {trip.documents.map((doc) => (
-                <div key={doc.id} className="flex items-center gap-2.5 rounded-lg border border-border px-3 py-2.5">
-                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-surface-alt">
-                    <Icon name="fileText" className="h-4 w-4 text-text-muted" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-medium text-text-primary">{doc.name}</p>
-                    <p className="text-[11.5px] text-text-muted">{doc.kind}</p>
-                  </div>
-                  <button type="button" className="rounded-md p-1.5 text-text-muted hover:bg-surface-hover hover:text-text-secondary">
-                    <Icon name="download" className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-              <button
-                type="button"
-                className="mt-2 flex items-center justify-center gap-1.5 rounded-md border border-dashed border-border-strong py-2.5 text-[12.5px] font-medium text-text-secondary hover:bg-surface-hover"
-              >
-                <Icon name="paperclip" className="h-3.5 w-3.5" />
-                Upload document
-              </button>
             </div>
           ) : trip && tab === 'timeline' ? (
             <div className="flex flex-col">

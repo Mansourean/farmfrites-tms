@@ -70,6 +70,8 @@ const paths = {
   key: 'M14.5 6.5a4 4 0 1 0-5.66 5.66L3 18v3h3l6.34-6.34a4 4 0 0 0 5.66-5.66Z M14.5 9.5l1.5 1.5',
   trash: 'M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14ZM10 11v6M14 11v6',
   upload: 'M12 21V8m0 0 4 4m-4-4-4 4M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4',
+  share:
+    'M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6 12 2 8 6M12 2v13',
 }
 
 export function Icon({ name, className = 'h-4 w-4', strokeWidth = 1.8, ...props }) {

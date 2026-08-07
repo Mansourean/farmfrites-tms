@@ -98,7 +98,10 @@ export function dbRowToTrip(row, names = {}) {
     remarks: row.remarks ?? '',
     documents: [], // no storage-backed documents exist yet, unchanged from before this phase
     timeline: buildSyntheticTimeline(row),
-    deliveryContactName: row.delivery_contact_name ?? '',
+    // delivery_contact_name still exists as a column (see 0011) but the app no longer reads or
+    // writes it -- that field was removed from the product; deliveryContactMobile was kept and
+    // is now displayed as "Receiver Mobile" everywhere (field name/column unchanged, label
+    // only). No migration/column drop.
     deliveryContactMobile: row.delivery_contact_mobile ?? '',
     createdSeq: row.created_at ? new Date(row.created_at).getTime() : 0,
     loadedAt: row.loaded_at,
@@ -152,7 +155,6 @@ export function tripPatchToDbRow(patch) {
   if ('deliveryDate' in patch) row.delivery_date = dateToDb(patch.deliveryDate)
   if ('status' in patch) row.status = statusToDb(patch.status)
   if ('remarks' in patch) row.remarks = patch.remarks
-  if ('deliveryContactName' in patch) row.delivery_contact_name = patch.deliveryContactName || null
   if ('deliveryContactMobile' in patch) row.delivery_contact_mobile = patch.deliveryContactMobile || null
 
   // destinationWarehouseId and vehicleType intentionally never written -- no column exists.

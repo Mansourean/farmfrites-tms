@@ -80,6 +80,20 @@ export function WhatsappModal() {
     }
   }
 
+  // Feature-detected, not just try/caught -- devices without the Web Share API (most desktop
+  // browsers) never render a Share button at all, so Copy is the only action shown there,
+  // rather than a button that would always fail.
+  const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
+
+  const handleShare = async () => {
+    try {
+      await navigator.share({ text: message })
+    } catch {
+      // AbortError (user cancelled the native share sheet) or any other failure -- the message
+      // is still visible with Copy right next to it, nothing more to do here.
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/30" onClick={handleClose} />
@@ -113,14 +127,26 @@ export function WhatsappModal() {
               )}
               <p className="mb-2 text-[12px] font-medium uppercase tracking-wide text-text-faint">Message preview</p>
               <p className="whitespace-pre-line rounded-lg bg-[#E1F5EC] px-3 py-2.5 text-[12.5px] text-[#0F5132]">{message}</p>
-              <button
-                type="button"
-                onClick={handleCopy}
-                className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-md border border-border-strong py-1.5 text-[12.5px] font-medium text-text-secondary hover:bg-surface-hover"
-              >
-                <Icon name={copied ? 'check' : 'copy'} className="h-3.5 w-3.5" />
-                {copied ? 'Copied' : 'Copy message'}
-              </button>
+              <div className="mt-3 flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-border-strong py-1.5 text-[12.5px] font-medium text-text-secondary hover:bg-surface-hover"
+                >
+                  <Icon name={copied ? 'check' : 'copy'} className="h-3.5 w-3.5" />
+                  {copied ? 'Copied' : 'Copy message'}
+                </button>
+                {canShare && (
+                  <button
+                    type="button"
+                    onClick={handleShare}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-border-strong py-1.5 text-[12.5px] font-medium text-text-secondary hover:bg-surface-hover"
+                  >
+                    <Icon name="share" className="h-3.5 w-3.5" />
+                    Share
+                  </button>
+                )}
+              </div>
             </>
           )}
         </div>
