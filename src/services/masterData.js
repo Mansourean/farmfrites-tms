@@ -15,7 +15,9 @@ async function fetchList(table, codeColumn, nameColumn, extraColumns = '') {
 export async function fetchMasterData() {
   const [customers, transporters, warehouses, destinations] = await Promise.all([
     fetchList('customers', 'customer_code', 'customer_name'),
-    fetchList('transporters', 'transporter_code', 'transporter_name'),
+    // phone is read so the WhatsApp assignment message can be addressed directly to the
+    // transporter (wa.me/<phone>) instead of opening with no recipient.
+    fetchList('transporters', 'transporter_code', 'transporter_name', ', phone'),
     // isActive powers New Trip's single-active-warehouse auto-default (see TripPanel.jsx);
     // city is read so the Destination Warehouse dropdown can disambiguate same-named
     // warehouses across cities (e.g. "Warehouse A -- Jeddah" vs "Warehouse A -- Riyadh").

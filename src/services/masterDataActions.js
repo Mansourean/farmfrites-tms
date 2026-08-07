@@ -12,8 +12,10 @@ export async function createCustomer(name) {
   return data
 }
 
-export async function createTransporter(name) {
-  const { data, error } = await supabase.rpc('create_transporter', { p_name: name })
+// phone is required (see 0012) -- the WhatsApp assignment link (0011) has to address the
+// message to the transporter, so a transporter created without one would be unreachable.
+export async function createTransporter(name, phone) {
+  const { data, error } = await supabase.rpc('create_transporter', { p_name: name, p_phone: phone })
   if (error) throw new Error(error.message)
   return data
 }

@@ -46,6 +46,8 @@ function emptyForm({ customers, warehouses, transporters }) {
     sourceWarehouseId: '',
     destinationWarehouseId: singleActiveWarehouseId(warehouses),
     destination: '',
+    deliveryContactName: '',
+    deliveryContactMobile: '',
     loadTons: '',
     transporterId: transporters[0]?.id ?? '',
     driverName: '',
@@ -73,6 +75,8 @@ function formFromTrip(trip, { customers, warehouses }) {
     sourceWarehouseId: trip.sourceWarehouseId,
     destinationWarehouseId: matchedDestinationWarehouse?.id ?? warehouses[1]?.id ?? warehouses[0]?.id ?? '',
     destination: trip.destination,
+    deliveryContactName: trip.deliveryContactName ?? '',
+    deliveryContactMobile: trip.deliveryContactMobile ?? '',
     loadTons: trip.loadTons,
     transporterId: trip.transporterId,
     driverName: trip.driver?.name ?? '',
@@ -247,6 +251,8 @@ export function TripPanel() {
       sourceWarehouseId: form.sourceWarehouseId,
       destinationWarehouseId: form.tripType === 'internal' ? form.destinationWarehouseId : null,
       destination,
+      deliveryContactName: form.tripType === 'customer' ? form.deliveryContactName : null,
+      deliveryContactMobile: form.tripType === 'customer' ? form.deliveryContactMobile : null,
       loadTons: Number(form.loadTons) || 0,
       transporterId: form.transporterId,
       driver: form.driverName ? { name: form.driverName, phone: form.driverPhone } : null,
@@ -363,47 +369,68 @@ export function TripPanel() {
               </Field>
 
               {form.tripType === 'customer' ? (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <Field
-                    label="Client"
-                    action={canAddMasterData && (
-                      <AddButton label="Add customer" onClick={() => setAddModal({ entityType: 'customer', field: 'customerId' })} />
-                    )}
-                  >
-                    <select className={inputClass} value={form.customerId} onChange={set('customerId')}>
-                      {customers.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
+                <>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <Field
+                      label="Client"
+                      action={canAddMasterData && (
+                        <AddButton label="Add customer" onClick={() => setAddModal({ entityType: 'customer', field: 'customerId' })} />
+                      )}
+                    >
+                      <select className={inputClass} value={form.customerId} onChange={set('customerId')}>
+                        {customers.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
 
-                  <Field
-                    label="Destination (City)"
-                    action={canAddMasterData && (
-                      <AddButton label="Add destination" onClick={() => setAddModal({ entityType: 'destination', field: 'destination' })} />
-                    )}
-                  >
-                    <select className={inputClass} value={form.destination} onChange={set('destination')}>
-                      {!form.destination && (
-                        <option value="" disabled>
-                          Select destination…
-                        </option>
+                    <Field
+                      label="Destination (City)"
+                      action={canAddMasterData && (
+                        <AddButton label="Add destination" onClick={() => setAddModal({ entityType: 'destination', field: 'destination' })} />
                       )}
-                      {/* Existing trips predate this table -- an unmatched current value is kept
-                          selectable as itself, never silently swapped for the first list item. */}
-                      {form.destination && !destinations.some((d) => d.name === form.destination) && (
-                        <option value={form.destination}>{form.destination} (current, not in list)</option>
-                      )}
-                      {destinations.map((d) => (
-                        <option key={d.id} value={d.name}>
-                          {d.name}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                </div>
+                    >
+                      <select className={inputClass} value={form.destination} onChange={set('destination')}>
+                        {!form.destination && (
+                          <option value="" disabled>
+                            Select destination…
+                          </option>
+                        )}
+                        {/* Existing trips predate this table -- an unmatched current value is kept
+                            selectable as itself, never silently swapped for the first list item. */}
+                        {form.destination && !destinations.some((d) => d.name === form.destination) && (
+                          <option value={form.destination}>{form.destination} (current, not in list)</option>
+                        )}
+                        {destinations.map((d) => (
+                          <option key={d.id} value={d.name}>
+                            {d.name}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <Field label="Delivery Contact Name">
+                      <input
+                        className={inputClass}
+                        value={form.deliveryContactName}
+                        onChange={set('deliveryContactName')}
+                        placeholder="Optional"
+                      />
+                    </Field>
+                    <Field label="Delivery Contact Mobile">
+                      <input
+                        className={inputClass}
+                        value={form.deliveryContactMobile}
+                        onChange={set('deliveryContactMobile')}
+                        placeholder="Optional"
+                      />
+                    </Field>
+                  </div>
+                </>
               ) : (
                 // Pilot scope: origin is operationally understood to be the Sudair factory for
                 // both trip types -- there is no Source Warehouse selection here.
@@ -548,6 +575,16 @@ export function TripPanel() {
                   <p className="text-text-primary">{trip.destination}</p>
                 </div>
               </section>
+
+              {trip.tripType === 'customer' && (trip.deliveryContactName || trip.deliveryContactMobile) && (
+                <section>
+                  <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-text-faint">Delivery Contact</p>
+                  <div className="rounded-lg border border-border p-3 text-[13px]">
+                    <p className="font-medium text-text-primary">{trip.deliveryContactName || '—'}</p>
+                    <p className="text-text-muted">{trip.deliveryContactMobile || '—'}</p>
+                  </div>
+                </section>
+              )}
 
               <section>
                 <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-text-faint">Transporter</p>

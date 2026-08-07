@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { generateId, generateToken } from '../utils/id'
+import { generateId } from '../utils/id'
 import { fetchMasterData } from '../services/masterData'
 import { fetchTripRows, insertTripRow, insertTripRows, updateTripRow, deleteTripRow } from '../services/tripsApi'
 import { markTripLoaded, rejectTripLoad } from '../services/tripActions'
@@ -208,37 +208,6 @@ export function TripsProvider({ children }) {
     [resolveNames, pulseUpdated],
   )
 
-  // Unchanged logic -- still an in-memory-only mechanism. Now that `trips` only populates for
-  // authenticated sessions (RLS requires it), the public /whatsapp/:token page (which is
-  // unauthenticated) will not find any trip here -- a known limitation, see the Phase 2 report.
-  const requestWhatsapp = useCallback(
-    (id) => {
-      const token = generateToken()
-      patchTrip(id, () => ({ whatsapp: { token, requestedAt: nowIso(), filledAt: null } }))
-      addTimelineEvent(id, 'Secure WhatsApp link sent to transporter', 'System')
-      return token
-    },
-    [patchTrip, addTimelineEvent],
-  )
-
-  const getTripByToken = useCallback((token) => trips.find((trip) => trip.whatsapp?.token === token), [trips])
-
-  const submitWhatsappUpdate = useCallback(
-    (token, details) => {
-      const trip = trips.find((t) => t.whatsapp?.token === token)
-      if (!trip) return null
-      patchTrip(trip.id, (t) => ({
-        driver: { name: details.driverName, phone: details.phone },
-        plateNo: details.plateNo,
-        vehicleType: details.vehicleType,
-        whatsapp: { ...t.whatsapp, filledAt: nowIso() },
-      }))
-      addTimelineEvent(trip.id, 'Driver & vehicle details submitted by transporter via WhatsApp', details.driverName)
-      return trip.id
-    },
-    [trips, patchTrip, addTimelineEvent],
-  )
-
   const setCustomFieldValue = useCallback(
     (id, columnId, fieldValue) => {
       patchTrip(id, (trip) => ({
@@ -267,9 +236,6 @@ export function TripsProvider({ children }) {
       deleteTrip,
       updateTrip,
       addTimelineEvent,
-      requestWhatsapp,
-      getTripByToken,
-      submitWhatsappUpdate,
       findTripByPlate,
       markLoaded,
       rejectLoad,
@@ -290,9 +256,6 @@ export function TripsProvider({ children }) {
       deleteTrip,
       updateTrip,
       addTimelineEvent,
-      requestWhatsapp,
-      getTripByToken,
-      submitWhatsappUpdate,
       findTripByPlate,
       markLoaded,
       rejectLoad,

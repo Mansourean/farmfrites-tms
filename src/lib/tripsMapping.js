@@ -68,9 +68,9 @@ export function dateFromDb(isoStr) {
 // `.find(x => x.id === trip.customerId)` call site in the codebase matches against), so no
 // separate code<->uuid translation is needed here, and existing lookups keep working
 // unchanged. Fields with no column in the verified schema (destinationWarehouseId,
-// vehicleType, documents, whatsapp, customFields, timeline as real history) are deliberately
-// given safe empty defaults, not fabricated data -- see the Phase 2 report for which UI areas
-// this affects.
+// vehicleType, documents, customFields, timeline as real history) are deliberately given safe
+// empty defaults, not fabricated data -- see the Phase 2 report for which UI areas this
+// affects.
 // `names` (optional) is { customerName, sourceWarehouseName, transporterName } resolved once
 // by TripsContext against the live master-data lists -- attached directly to the trip so
 // src/data/lookup.js's originLabel()/transporterName() (used by ~9 display components) can
@@ -98,7 +98,8 @@ export function dbRowToTrip(row, names = {}) {
     remarks: row.remarks ?? '',
     documents: [], // no storage-backed documents exist yet, unchanged from before this phase
     timeline: buildSyntheticTimeline(row),
-    whatsapp: null, // whatsapp_token/requestedAt/filledAt have no columns -- see report
+    deliveryContactName: row.delivery_contact_name ?? '',
+    deliveryContactMobile: row.delivery_contact_mobile ?? '',
     createdSeq: row.created_at ? new Date(row.created_at).getTime() : 0,
     loadedAt: row.loaded_at,
     loadedBy: row.loaded_by,
@@ -151,6 +152,8 @@ export function tripPatchToDbRow(patch) {
   if ('deliveryDate' in patch) row.delivery_date = dateToDb(patch.deliveryDate)
   if ('status' in patch) row.status = statusToDb(patch.status)
   if ('remarks' in patch) row.remarks = patch.remarks
+  if ('deliveryContactName' in patch) row.delivery_contact_name = patch.deliveryContactName || null
+  if ('deliveryContactMobile' in patch) row.delivery_contact_mobile = patch.deliveryContactMobile || null
 
   // destinationWarehouseId and vehicleType intentionally never written -- no column exists.
 

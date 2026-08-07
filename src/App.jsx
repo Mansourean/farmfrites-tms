@@ -15,7 +15,7 @@ import { Warehouses } from './pages/Warehouses'
 import { Documents } from './pages/Documents'
 import { Settings } from './pages/Settings'
 import { WarehouseScan } from './pages/WarehouseScan'
-import { WhatsappUpdate } from './pages/WhatsappUpdate'
+import { DriverAssignment } from './pages/DriverAssignment'
 import { PrintTrip } from './pages/PrintTrip'
 import { NotFound } from './pages/NotFound'
 
@@ -46,7 +46,7 @@ function App() {
                     reading trips both require an authenticated session under RLS). */}
                 <Route path="/warehouse/scan" element={<WarehouseScan />} />
               </Route>
-              <Route path="/whatsapp/:token" element={<WhatsappUpdate />} />
+              <Route path="/assign/:token" element={<DriverAssignment />} />
               <Route path="/print/trip/:id" element={<PrintTrip />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
