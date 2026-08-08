@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { FilterBar } from '../components/toolbar/FilterBar'
 import { TripsView } from '../components/trips/TripsView'
 import { useTrips } from '../context/TripsContext'
@@ -20,6 +20,20 @@ const defaultFilters = {
 export function TransportationLog() {
   const { trips, loading, error, reload } = useTrips()
   const [filters, setFilters] = useState(defaultFilters)
+
+  // Pilot-simple "does not need a manual refresh" fix, no Supabase Realtime: a transporter
+  // submits their driver/vehicle assignment from their own device via the WhatsApp link,
+  // completely outside this session, so nothing here would otherwise know it happened. The
+  // realistic workflow is the dispatcher switching away to send/check WhatsApp and back --
+  // refetching whenever this tab becomes visible again covers that directly. TripPanel reads
+  // from this same shared trips state, so if it's open when the list refreshes, it updates too.
+  useEffect(() => {
+    function handleVisibility() {
+      if (document.visibilityState === 'visible') reload()
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [reload])
 
   const filtered = useMemo(() => {
     const q = filters.search.trim().toLowerCase()
