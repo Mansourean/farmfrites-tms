@@ -52,7 +52,6 @@ function emptyForm({ customers, warehouses, transporters }) {
     plateNo: '',
     dispatchDate: '',
     deliveryDate: '',
-    actualDeliveryDate: '',
     status: 'planned',
     remarks: '',
   }
@@ -80,7 +79,6 @@ function formFromTrip(trip, { customers, warehouses }) {
     plateNo: trip.plateNo,
     dispatchDate: trip.dispatchDate,
     deliveryDate: trip.deliveryDate,
-    actualDeliveryDate: trip.actualDeliveryDate ?? '',
     status: trip.status,
     remarks: trip.remarks,
   }
@@ -265,7 +263,10 @@ export function TripPanel() {
       plateNo: form.plateNo,
       dispatchDate: form.dispatchDate,
       deliveryDate: form.deliveryDate,
-      actualDeliveryDate: form.actualDeliveryDate,
+      // actualDeliveryDate is deliberately omitted -- there is no form control for it anymore
+      // (see TripPanel's Actual Delivery Date & Time removal). Leaving the key out entirely
+      // means tripPatchToDbRow's `if ('actualDeliveryDate' in patch)` guard skips it, so
+      // whatever is already stored (e.g. set by the Confirm Delivery button) is left untouched.
       status,
       remarks: form.remarks,
     }
@@ -485,15 +486,6 @@ export function TripPanel() {
                   />
                 </Field>
               )}
-
-              <Field label="Actual Delivery Date & Time">
-                <input
-                  type="datetime-local"
-                  className={inputClass}
-                  value={form.actualDeliveryDate}
-                  onChange={set('actualDeliveryDate')}
-                />
-              </Field>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <Field label="Driver Name">
