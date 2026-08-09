@@ -1,32 +1,21 @@
 import { useEffect, useState } from 'react'
 import { createCustomer, createTransporter, createWarehouse, createDestination } from '../../services/masterDataActions'
-import { normalizeSaudiMobile } from '../../lib/phone'
 import { Icon } from '../ui/Icon'
 
 // One small reusable dialog for the inline "+" master-data creation, rather than one
 // near-identical component per entity -- entityType selects which RPC/labels apply. Only Name
-// is collected for most entities: it's the only NOT NULL field on customers/warehouses/
-// destinations beyond code (server-generated) and id -- city/contact/email/address are left
-// for a future proper master-data management UI, not built here. Transporter is the one
-// exception: `extraField` adds a second required input (Mobile Number, stored in the existing
-// transporters.phone column) because the WhatsApp assignment feature (0011) has to address its
-// message to the transporter -- a transporter created without one would be unreachable, so
-// 0012 makes the RPC itself require it, not just this form. `extraField.normalize` (Saudi
-// mobile format, see lib/phone.js) is UX-only -- 0012's RPC re-validates the same rule
-// server-side, which is the real boundary, not this client-side check.
+// is collected for every entity: it's the only NOT NULL field on customers/transporters/
+// warehouses/destinations beyond code (server-generated) and id -- city/contact/phone/email/
+// address are left for a future proper master-data management UI, not built here. Transporter
+// mobile number is deliberately not collected here (see 0015) -- a transporter can be created
+// name-only and its phone added later via a proper edit UI when one exists; `extraField` is kept
+// as a generic mechanism below in case a future entity genuinely needs a second required input.
 const ENTITY_CONFIG = {
   customer: { title: 'Add Customer', label: 'Customer Name', placeholder: 'e.g. Panda Retail Co.', create: createCustomer },
   transporter: {
     title: 'Add Transporter',
     label: 'Transporter Name',
     placeholder: 'e.g. Almajdouie Logistics',
-    extraField: {
-      key: 'phone',
-      label: 'Mobile Number',
-      placeholder: '05XXXXXXXX or 9665XXXXXXXX',
-      normalize: normalizeSaudiMobile,
-      invalidMessage: 'Enter a valid Saudi mobile number (e.g. 0512345678 or 966512345678).',
-    },
     create: createTransporter,
   },
   warehouse: { title: 'Add Warehouse', label: 'Warehouse Name', placeholder: 'e.g. Jeddah DC', create: createWarehouse },

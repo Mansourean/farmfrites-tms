@@ -12,9 +12,10 @@ export async function createCustomer(name) {
   return data
 }
 
-// phone is required (see 0012) -- the WhatsApp assignment link (0011) has to address the
-// message to the transporter, so a transporter created without one would be unreachable.
-export async function createTransporter(name, phone) {
+// phone is optional (see 0015 -- 0012's phone-required rule was reverted): the inline "+" Add
+// Transporter dialog no longer collects it, so this is normally called name-only; the RPC
+// itself still accepts and validates a phone if one is ever passed.
+export async function createTransporter(name, phone = null) {
   const { data, error } = await supabase.rpc('create_transporter', { p_name: name, p_phone: phone })
   if (error) throw new Error(error.message)
   return data
