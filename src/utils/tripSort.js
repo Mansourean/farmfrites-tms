@@ -4,11 +4,12 @@
 const STATUS_RANK = {
   rejected: 0,
   planned: 1,
-  waiting_driver: 2,
-  loaded: 3,
-  in_transit: 4,
-  delivered: 5,
-  cancelled: 6,
+  ready_for_transporter: 2,
+  waiting_driver: 3,
+  loaded: 4,
+  in_transit: 5,
+  delivered: 6,
+  cancelled: 7,
 }
 
 function createdRank(trip) {

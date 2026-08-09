@@ -18,3 +18,10 @@ export async function rejectTripLoad(tripId, reason) {
   if (error) throw new Error(error.message)
   return data
 }
+
+// Operational workflow (see 0013): Loaded -> In Transit, once the truck actually leaves.
+export async function markTripInTransit(tripId) {
+  const { data, error } = await supabase.rpc('mark_trip_in_transit', { p_trip_id: tripId })
+  if (error) throw new Error(error.message)
+  return data
+}

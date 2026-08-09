@@ -18,8 +18,14 @@ export const TRIP_TYPE_FROM_DB = {
 // values; the frontend previously only knew 3 of the 6). Existing keys/values are unchanged.
 // 'rejected' added for Phase 3's reject_trip_load workflow (see 0008_reject_status.sql) --
 // set only via that RPC, not selectable as a source status for any other transition.
+// 'ready_for_transporter' added for the operational workflow (see 0013): the trip becomes
+// this automatically once both Delivery Confirmation checkboxes are set, and is now the
+// eligible source status for mark_trip_loaded/reject_trip_load (was 'Planned'). 'waiting_driver'
+// is kept for backward compatibility with any existing row already at that status -- it is no
+// longer part of the automated flow, but remains selectable and mapped like every other value.
 export const STATUS_TO_DB = {
   planned: 'Planned',
+  ready_for_transporter: 'Ready for Transporter',
   waiting_driver: 'Waiting Driver',
   loaded: 'Loaded',
   in_transit: 'In Transit',
@@ -29,6 +35,7 @@ export const STATUS_TO_DB = {
 }
 export const STATUS_FROM_DB = {
   Planned: 'planned',
+  'Ready for Transporter': 'ready_for_transporter',
   'Waiting Driver': 'waiting_driver',
   Loaded: 'loaded',
   'In Transit': 'in_transit',
@@ -59,6 +66,24 @@ export function dateToDb(dateStr) {
 export function dateFromDb(isoStr) {
   if (!isoStr) return ''
   return isoStr.slice(0, 10)
+}
+
+// Separate from dateToDb/dateFromDb on purpose: dispatch_date stays date-only (unchanged,
+// still used by every existing consumer -- Excel, sorting, printing), while the Delivery
+// Confirmation section now needs a real time-of-day on delivery_date and actual_delivery_date
+// (both already timestamptz -- no schema change was needed to support this). Pairs with
+// <input type="datetime-local">, which is always local time with no timezone in its string --
+// new Date(localStr) interprets it as the browser's local time, exactly matching what the
+// user typed, then converts to a real UTC instant for storage.
+export function datetimeToDb(localStr) {
+  if (!localStr) return null
+  return new Date(localStr).toISOString()
+}
+export function datetimeFromDb(isoStr) {
+  if (!isoStr) return ''
+  const d = new Date(isoStr)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 // Converts one public.trips row into the exact shape TripsContext/components have always
@@ -94,6 +119,11 @@ export function dbRowToTrip(row, names = {}) {
     vehicleType: '', // no vehicle_type column -- see report
     dispatchDate: dateFromDb(row.dispatch_date),
     deliveryDate: dateFromDb(row.delivery_date),
+    // Full date+time reads of the same delivery_date column, for the Delivery Confirmation
+    // section specifically -- deliveryDate above is untouched (still date-only) so every
+    // existing consumer (Excel, sorting, printing) keeps working exactly as before.
+    deliveryDateTime: datetimeFromDb(row.delivery_date),
+    actualDeliveryDate: datetimeFromDb(row.actual_delivery_date),
     status: statusFromDb(row.status),
     remarks: row.remarks ?? '',
     documents: [], // no storage-backed documents exist yet, unchanged from before this phase
@@ -103,6 +133,9 @@ export function dbRowToTrip(row, names = {}) {
     // is now displayed as "Receiver Mobile" everywhere (field name/column unchanged, label
     // only). No migration/column drop.
     deliveryContactMobile: row.delivery_contact_mobile ?? '',
+    // Operational workflow (see 0013): the two Delivery Confirmation checkboxes.
+    dateTimeConfirmed: row.date_time_confirmed ?? false,
+    customerNotified: row.customer_notified ?? false,
     createdSeq: row.created_at ? new Date(row.created_at).getTime() : 0,
     loadedAt: row.loaded_at,
     loadedBy: row.loaded_by,
@@ -153,9 +186,16 @@ export function tripPatchToDbRow(patch) {
   if ('plateNo' in patch) row.plate_no = patch.plateNo
   if ('dispatchDate' in patch) row.dispatch_date = dateToDb(patch.dispatchDate)
   if ('deliveryDate' in patch) row.delivery_date = dateToDb(patch.deliveryDate)
+  // deliveryDateTime takes priority when both are present in the same patch (TripPanel only
+  // ever sends one or the other, never both, but if it did, the richer datetime write should
+  // win) -- same delivery_date column either way.
+  if ('deliveryDateTime' in patch) row.delivery_date = datetimeToDb(patch.deliveryDateTime)
+  if ('actualDeliveryDate' in patch) row.actual_delivery_date = datetimeToDb(patch.actualDeliveryDate)
   if ('status' in patch) row.status = statusToDb(patch.status)
   if ('remarks' in patch) row.remarks = patch.remarks
   if ('deliveryContactMobile' in patch) row.delivery_contact_mobile = patch.deliveryContactMobile || null
+  if ('dateTimeConfirmed' in patch) row.date_time_confirmed = !!patch.dateTimeConfirmed
+  if ('customerNotified' in patch) row.customer_notified = !!patch.customerNotified
 
   // destinationWarehouseId and vehicleType intentionally never written -- no column exists.
 
@@ -174,6 +214,17 @@ export function tripEventToTimelineItem(event) {
   }
   if (event.event_type === 'loading_rejected') {
     return { id: event.id, label: `Load rejected — ${event.reason}`, actor, timestamp: event.created_at }
+  }
+  if (event.event_type === 'departed') {
+    return { id: event.id, label: 'Trip departed — now In Transit', actor, timestamp: event.created_at }
+  }
+  // Generic audit trigger (see 0013) -- covers every other status change, including plain
+  // Status-dropdown edits and the automatic Planned -> Ready for Transporter transition, none
+  // of which have their own dedicated event_type.
+  if (event.event_type === 'status_changed') {
+    const from = event.metadata?.previous_status ?? '?'
+    const to = event.metadata?.new_status ?? '?'
+    return { id: event.id, label: `Status changed: ${from} → ${to}`, actor, timestamp: event.created_at }
   }
   return { id: event.id, label: event.event_type, actor, timestamp: event.created_at }
 }

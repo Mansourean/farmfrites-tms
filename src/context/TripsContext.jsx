@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { generateId } from '../utils/id'
 import { fetchMasterData } from '../services/masterData'
 import { fetchTripRows, insertTripRow, insertTripRows, updateTripRow, deleteTripRow } from '../services/tripsApi'
-import { markTripLoaded, rejectTripLoad } from '../services/tripActions'
+import { markTripLoaded, rejectTripLoad, markTripInTransit } from '../services/tripActions'
 import { dbRowToTrip, tripPatchToDbRow } from '../lib/tripsMapping'
 
 const TripsContext = createContext(null)
@@ -161,17 +161,33 @@ export function TripsProvider({ children }) {
     [resolveNames, pulseUpdated, addTimelineEvent],
   )
 
-  // Matching filter unchanged from before Phase 3 -- still only surfaces 'planned'/'in_transit'
-  // trips to the warehouse scanner (see the Phase 3 report on why 'waiting_driver' is
-  // deliberately not included here or in mark_trip_loaded's DB-side eligibility check).
+  // Operational workflow (see 0013): the warehouse scanner now matches trips at the two
+  // statuses a warehouse employee actually acts on -- 'ready_for_transporter' (eligible for
+  // Loaded/Reject) and 'loaded' (eligible for In Transit). Was 'planned'/'in_transit' before
+  // mark_trip_loaded's own eligibility check moved from Planned to Ready for Transporter.
   const findTripByPlate = useCallback(
     (plate) => {
       const normalized = plate.trim().toUpperCase().replace(/\s+/g, '')
       if (!normalized) return null
       return trips.find(
         (trip) =>
-          ['planned', 'in_transit'].includes(trip.status) &&
+          ['ready_for_transporter', 'loaded'].includes(trip.status) &&
           trip.plateNo.toUpperCase().replace(/\s+/g, '').includes(normalized),
+      )
+    },
+    [trips],
+  )
+
+  // Mirrors findTripByPlate exactly, matching on Sales No instead -- the warehouse screen's
+  // second search option (see 0013 item 3).
+  const findTripBySalesNo = useCallback(
+    (salesNo) => {
+      const normalized = salesNo.trim().toUpperCase()
+      if (!normalized) return null
+      return trips.find(
+        (trip) =>
+          ['ready_for_transporter', 'loaded'].includes(trip.status) &&
+          trip.salesNo.toUpperCase().includes(normalized),
       )
     },
     [trips],
@@ -200,6 +216,19 @@ export function TripsProvider({ children }) {
   const rejectLoad = useCallback(
     async (id, reason) => {
       const row = await rejectTripLoad(id, reason)
+      const trip = dbRowToTrip(row, resolveNames(row))
+      setTrips((prev) => prev.map((t) => (t.id === id ? trip : t)))
+      pulseUpdated([id])
+      return trip
+    },
+    [resolveNames, pulseUpdated],
+  )
+
+  // Operational workflow (see 0013): Loaded -> In Transit, mirrors markLoaded/rejectLoad exactly
+  // -- the RPC re-validates identity/role/active-status/trip-status server-side.
+  const markInTransit = useCallback(
+    async (id) => {
+      const row = await markTripInTransit(id)
       const trip = dbRowToTrip(row, resolveNames(row))
       setTrips((prev) => prev.map((t) => (t.id === id ? trip : t)))
       pulseUpdated([id])
@@ -237,8 +266,10 @@ export function TripsProvider({ children }) {
       updateTrip,
       addTimelineEvent,
       findTripByPlate,
+      findTripBySalesNo,
       markLoaded,
       rejectLoad,
+      markInTransit,
       setCustomFieldValue,
     }),
     [
@@ -257,8 +288,10 @@ export function TripsProvider({ children }) {
       updateTrip,
       addTimelineEvent,
       findTripByPlate,
+      findTripBySalesNo,
       markLoaded,
       rejectLoad,
+      markInTransit,
       setCustomFieldValue,
     ],
   )

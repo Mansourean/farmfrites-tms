@@ -4,7 +4,8 @@ const TRIPS_COLUMNS =
   'id, trip_no, sales_no, trip_type, customer_id, source_warehouse_id, destination, ' +
   'transporter_id, driver_name, driver_phone, plate_no, load_tons, dispatch_date, ' +
   'delivery_date, status, remarks, created_at, updated_at, loaded_at, loaded_by, ' +
-  'delivery_contact_name, delivery_contact_mobile'
+  'delivery_contact_name, delivery_contact_mobile, date_time_confirmed, customer_notified, ' +
+  'actual_delivery_date'
 
 export async function fetchTripRows() {
   const { data, error } = await supabase.from('trips').select(TRIPS_COLUMNS).order('created_at', { ascending: false })

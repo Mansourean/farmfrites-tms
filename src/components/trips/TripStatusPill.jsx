@@ -3,6 +3,7 @@
 // distinguishable at a glance, alongside Rejected/Delivered/Cancelled's reds and green.
 const statusConfig = {
   planned: { label: 'Planned', color: '#0E7490', bg: '#CFFAFE' },
+  ready_for_transporter: { label: 'Ready for Transporter', color: '#C2410C', bg: '#FFEDD5' },
   waiting_driver: { label: 'Waiting Driver', color: '#8A5A00', bg: '#FCEFC7' },
   loaded: { label: 'Loaded', color: '#6B3FA0', bg: '#EAE0F8' },
   in_transit: { label: 'In Transit', color: '#1743C4', bg: '#D3E3FC' },

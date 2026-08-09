@@ -52,6 +52,7 @@ export function resolveStatus(text) {
   if (value.includes('deliver')) return 'delivered'
   if (value.includes('transit')) return 'in_transit'
   if (value.includes('load')) return 'loaded'
+  if (value.includes('ready')) return 'ready_for_transporter'
   if (value.includes('driver')) return 'waiting_driver'
   return 'planned'
 }

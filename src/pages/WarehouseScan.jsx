@@ -12,8 +12,17 @@ function normalizePlateGuess(rawText) {
   return match ? match[0] : cleaned.slice(0, 12)
 }
 
+// Operational workflow (see 0013): the trips a warehouse employee has any reason to act on --
+// eligible for Loaded/Reject ('ready_for_transporter') or In Transit ('loaded'). Newest first,
+// matching the rest of the app's default ordering.
+function upcomingTrips(trips) {
+  return trips
+    .filter((t) => t.status === 'ready_for_transporter' || t.status === 'loaded')
+    .sort((a, b) => b.createdSeq - a.createdSeq)
+}
+
 export function WarehouseScan() {
-  const { findTripByPlate, markLoaded, rejectLoad } = useTrips()
+  const { trips, findTripByPlate, findTripBySalesNo, markLoaded, rejectLoad, markInTransit } = useTrips()
   const { currentUser } = useAuth()
   const editable = canEdit(currentUser?.role)
   const videoRef = useRef(null)
@@ -21,13 +30,14 @@ export function WarehouseScan() {
 
   const [cameraState, setCameraState] = useState('requesting') // requesting | ready | denied
   const [plate, setPlate] = useState('')
+  const [salesNoInput, setSalesNoInput] = useState('')
   const [scanning, setScanning] = useState(false)
   const [scanError, setScanError] = useState('')
   const [trip, setTrip] = useState(null)
-  const [notFoundPlate, setNotFoundPlate] = useState('')
+  const [notFoundQuery, setNotFoundQuery] = useState('')
   const [rejecting, setRejecting] = useState(false)
   const [reason, setReason] = useState('')
-  const [result, setResult] = useState(null) // { type: 'loaded' | 'rejected', trip }
+  const [result, setResult] = useState(null) // { type: 'loaded' | 'in_transit' | 'rejected', trip }
   const [submitting, setSubmitting] = useState(false)
   const [actionError, setActionError] = useState('')
 
@@ -87,18 +97,27 @@ export function WarehouseScan() {
     }
   }
 
+  const selectTrip = (found, query) => {
+    setActionError('')
+    if (found) {
+      setTrip(found)
+      setNotFoundQuery('')
+    } else {
+      setTrip(null)
+      setNotFoundQuery(query)
+    }
+  }
+
   const handleMatch = (e) => {
     e?.preventDefault()
     if (!plate.trim()) return
-    setActionError('')
-    const found = findTripByPlate(plate)
-    if (found) {
-      setTrip(found)
-      setNotFoundPlate('')
-    } else {
-      setTrip(null)
-      setNotFoundPlate(plate)
-    }
+    selectTrip(findTripByPlate(plate), plate)
+  }
+
+  const handleMatchSalesNo = (e) => {
+    e?.preventDefault()
+    if (!salesNoInput.trim()) return
+    selectTrip(findTripBySalesNo(salesNoInput), salesNoInput)
   }
 
   const handleLoaded = async () => {
@@ -109,6 +128,19 @@ export function WarehouseScan() {
       setResult({ type: 'loaded', trip: updated })
     } catch (err) {
       setActionError(err.message || 'Could not confirm loading for this trip.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleInTransit = async () => {
+    setActionError('')
+    setSubmitting(true)
+    try {
+      const updated = await markInTransit(trip.id)
+      setResult({ type: 'in_transit', trip: updated })
+    } catch (err) {
+      setActionError(err.message || 'Could not update this trip to In Transit.')
     } finally {
       setSubmitting(false)
     }
@@ -131,8 +163,9 @@ export function WarehouseScan() {
 
   const reset = () => {
     setPlate('')
+    setSalesNoInput('')
     setTrip(null)
-    setNotFoundPlate('')
+    setNotFoundQuery('')
     setRejecting(false)
     setReason('')
     setResult(null)
@@ -153,11 +186,15 @@ export function WarehouseScan() {
       {result ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
           <span
-            className={`grid h-16 w-16 place-items-center rounded-full ${result.type === 'loaded' ? 'bg-[#1E9E6A]' : 'bg-[#E5484D]'}`}
+            className={`grid h-16 w-16 place-items-center rounded-full ${
+              result.type === 'loaded' ? 'bg-[#1E9E6A]' : result.type === 'in_transit' ? 'bg-[#4F7CFF]' : 'bg-[#E5484D]'
+            }`}
           >
-            <Icon name={result.type === 'loaded' ? 'check' : 'x'} className="h-8 w-8" strokeWidth={2.5} />
+            <Icon name={result.type === 'rejected' ? 'x' : result.type === 'in_transit' ? 'truck' : 'check'} className="h-8 w-8" strokeWidth={2.5} />
           </span>
-          <p className="text-[17px] font-semibold">{result.type === 'loaded' ? 'Marked as Loaded' : 'Load Rejected'}</p>
+          <p className="text-[17px] font-semibold">
+            {result.type === 'loaded' ? 'Marked as Loaded' : result.type === 'in_transit' ? 'Marked as In Transit' : 'Load Rejected'}
+          </p>
           <p className="text-[13px] text-white/60">
             {result.trip.salesNo} · {originLabel(result.trip)} → {result.trip.destination}
           </p>
@@ -191,8 +228,20 @@ export function WarehouseScan() {
 
           {!editable ? (
             <p className="mt-auto pt-8 text-center text-[13px] text-white/50">
-              Your role does not have permission to confirm or reject loading.
+              Your role does not have permission to update this trip.
             </p>
+          ) : trip.status === 'loaded' ? (
+            <div className="mt-auto pt-8">
+              <button
+                type="button"
+                onClick={handleInTransit}
+                disabled={submitting}
+                className="flex w-full flex-col items-center justify-center gap-2 rounded-2xl bg-[#4F7CFF] py-8 text-[16px] font-semibold disabled:opacity-60"
+              >
+                <Icon name="truck" className="h-7 w-7" strokeWidth={2.5} />
+                {submitting ? 'Updating…' : 'Mark In Transit'}
+              </button>
+            </div>
           ) : !rejecting ? (
             <div className="mt-auto grid grid-cols-2 gap-3 pt-8">
               <button
@@ -295,11 +344,50 @@ export function WarehouseScan() {
               </button>
             </form>
 
-            {notFoundPlate && (
+            <form onSubmit={handleMatchSalesNo} className="flex flex-col gap-2">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[12px] font-medium text-white/60">Sales No</span>
+                <input
+                  value={salesNoInput}
+                  onChange={(e) => setSalesNoInput(e.target.value)}
+                  placeholder="e.g. SO-24681"
+                  className="rounded-lg border border-white/20 bg-white/5 px-3 py-2.5 text-[15px] tracking-wide text-white outline-none placeholder:text-white/30 focus:border-white/40"
+                />
+              </label>
+              <button type="submit" className="rounded-lg border border-white/20 py-2.5 text-[14px] font-semibold">
+                Match Trip
+              </button>
+            </form>
+
+            {notFoundQuery && (
               <p className="text-[12.5px] text-[#FF8A80]">
-                No planned or in-transit trip found for plate “{notFoundPlate}”. Check the number and try again.
+                No trip ready for the warehouse matches “{notFoundQuery}”. Check the value and try again.
               </p>
             )}
+
+            <div className="mt-2 flex flex-col gap-2">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-white/40">Upcoming Trips</p>
+              {upcomingTrips(trips).length === 0 ? (
+                <p className="text-[12.5px] text-white/40">No trips waiting on the warehouse right now.</p>
+              ) : (
+                upcomingTrips(trips).map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => selectTrip(t)}
+                    className="flex items-center justify-between gap-2 rounded-lg border border-white/15 bg-white/5 px-3 py-2.5 text-left"
+                  >
+                    <span>
+                      <span className="block text-[13.5px] font-medium">{t.salesNo}</span>
+                      <span className="block text-[12px] text-white/50">{originLabel(t)} → {t.destination}</span>
+                    </span>
+                    <span className="text-[11px] font-medium uppercase tracking-wide text-white/40">
+                      {t.status === 'loaded' ? 'Loaded' : 'Ready'}
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}

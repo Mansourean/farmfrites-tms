@@ -2,14 +2,18 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { getAssignmentContext, submitDriverAssignment } from '../services/tripAssignment'
 import { Icon } from '../components/ui/Icon'
+import { formatDateTime } from '../utils/format'
 
 const inputClass =
   'w-full rounded-lg border border-border-strong bg-white px-3 py-2.5 text-[14px] text-text-primary outline-none focus:border-brand-400'
 
-// Public, unauthenticated page reached from the WhatsApp assignment link. Deliberately shows
-// nothing beyond what's needed to assign a driver/vehicle -- no other trip information, per
-// the approved design. Reusable: the link stays valid (and this page keeps prefilling from
-// whatever was last submitted) until the trip reaches a terminal status server-side.
+// Public, unauthenticated page reached from the WhatsApp assignment link. Shows the trip's
+// Sales No/Customer/Destination/Delivery Date & Time/Receiver Mobile as read-only context above
+// the form -- get_trip_assignment_context (see 0014) is a read-only RPC, so there is no way for
+// this page to edit any of it; the transporter can only ever submit Driver Name/Driver Mobile/
+// Truck Plate Number, enforced server-side by submit_driver_assignment's fixed parameter list.
+// Reusable: the link stays valid (and this page keeps prefilling from whatever was last
+// submitted) until the trip reaches a terminal status server-side.
 export function DriverAssignment() {
   const { token } = useParams()
   const [status, setStatus] = useState('loading') // loading | not-found | closed | form | submitted
@@ -104,6 +108,29 @@ export function DriverAssignment() {
 
           {status === 'form' && (
             <form className="flex flex-col gap-3.5" onSubmit={handleSubmit}>
+              <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-surface-alt p-3.5 text-[13px]">
+                <p className="text-text-muted">
+                  Sales No: <span className="font-medium text-text-primary">{context.sales_no}</span>
+                </p>
+                {context.customer_name && (
+                  <p className="text-text-muted">
+                    Customer: <span className="font-medium text-text-primary">{context.customer_name}</span>
+                  </p>
+                )}
+                <p className="text-text-muted">
+                  Destination: <span className="font-medium text-text-primary">{context.destination}</span>
+                </p>
+                <p className="text-text-muted">
+                  Delivery Date & Time:{' '}
+                  <span className="font-medium text-text-primary">{formatDateTime(context.delivery_date)}</span>
+                </p>
+                {context.delivery_contact_mobile && (
+                  <p className="text-text-muted">
+                    Receiver Mobile: <span className="font-medium text-text-primary">{context.delivery_contact_mobile}</span>
+                  </p>
+                )}
+              </div>
+
               <label className="flex flex-col gap-1.5">
                 <span className="text-[12px] font-medium text-text-secondary">Driver Name</span>
                 <input required className={inputClass} value={form.driverName} onChange={set('driverName')} placeholder="e.g. Faisal Al-Harbi" />

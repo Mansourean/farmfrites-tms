@@ -52,6 +52,10 @@ function emptyForm({ customers, warehouses, transporters }) {
     plateNo: '',
     dispatchDate: '',
     deliveryDate: '',
+    deliveryDateTime: '',
+    actualDeliveryDate: '',
+    dateTimeConfirmed: false,
+    customerNotified: false,
     status: 'planned',
     remarks: '',
   }
@@ -79,6 +83,10 @@ function formFromTrip(trip, { customers, warehouses }) {
     plateNo: trip.plateNo,
     dispatchDate: trip.dispatchDate,
     deliveryDate: trip.deliveryDate,
+    deliveryDateTime: trip.deliveryDateTime ?? '',
+    actualDeliveryDate: trip.actualDeliveryDate ?? '',
+    dateTimeConfirmed: trip.dateTimeConfirmed ?? false,
+    customerNotified: trip.customerNotified ?? false,
     status: trip.status,
     remarks: trip.remarks,
   }
@@ -239,6 +247,15 @@ export function TripPanel() {
         ? warehouses.find((w) => w.id === form.destinationWarehouseId)?.name ?? ''
         : form.destination
 
+    // Operational workflow (see 0013): once both Delivery Confirmation checkboxes are set on a
+    // Customer Delivery trip, the trip is ready to be handed to the transporter. Only fires
+    // forward from Planned -- never overrides a status the user (or an earlier stage of the
+    // workflow) already moved past Planned, and never applies to Internal Transfer trips, which
+    // have no customer to confirm with.
+    const autoReady =
+      form.tripType === 'customer' && form.status === 'planned' && form.dateTimeConfirmed && form.customerNotified
+    const status = autoReady ? 'ready_for_transporter' : form.status
+
     const payload = {
       salesNo,
       tripType: form.tripType,
@@ -246,7 +263,6 @@ export function TripPanel() {
       sourceWarehouseId: form.sourceWarehouseId,
       destinationWarehouseId: form.tripType === 'internal' ? form.destinationWarehouseId : null,
       destination,
-      deliveryContactMobile: form.tripType === 'customer' ? form.deliveryContactMobile : null,
       // loadTons is deliberately omitted -- there is no form control for it anymore (see
       // TripPanel's Load (Tons) removal), and including it here as 0 would silently zero out
       // any existing value (from Excel import or earlier entry) on every edit. Leaving the key
@@ -256,9 +272,19 @@ export function TripPanel() {
       driver: form.driverName ? { name: form.driverName, phone: form.driverPhone } : null,
       plateNo: form.plateNo,
       dispatchDate: form.dispatchDate,
-      deliveryDate: form.deliveryDate,
-      status: form.status,
+      actualDeliveryDate: form.actualDeliveryDate,
+      status,
       remarks: form.remarks,
+      // Delivery Confirmation (see 0013) only exists for Customer Delivery trips -- Internal
+      // Transfer trips keep the plain, date-only Delivery Date field exactly as before.
+      ...(form.tripType === 'customer'
+        ? {
+            deliveryDateTime: form.deliveryDateTime,
+            deliveryContactMobile: form.deliveryContactMobile,
+            dateTimeConfirmed: form.dateTimeConfirmed,
+            customerNotified: form.customerNotified,
+          }
+        : { deliveryDate: form.deliveryDate, deliveryContactMobile: null }),
     }
 
     setSaving(true)
@@ -409,15 +435,6 @@ export function TripPanel() {
                       </select>
                     </Field>
                   </div>
-
-                  <Field label="Receiver Mobile">
-                    <input
-                      className={inputClass}
-                      value={form.deliveryContactMobile}
-                      onChange={set('deliveryContactMobile')}
-                      placeholder="Optional"
-                    />
-                  </Field>
                 </>
               ) : (
                 // Pilot scope: origin is operationally understood to be the Sudair factory for
@@ -467,14 +484,60 @@ export function TripPanel() {
                 </select>
               </Field>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <Field label="Dispatch Date">
-                  <input type="date" className={inputClass} value={form.dispatchDate} onChange={set('dispatchDate')} />
-                </Field>
+              <Field label="Dispatch Date">
+                <input type="date" className={inputClass} value={form.dispatchDate} onChange={set('dispatchDate')} />
+              </Field>
+
+              {form.tripType === 'internal' ? (
                 <Field label="Delivery Date">
                   <input type="date" className={inputClass} value={form.deliveryDate} onChange={set('deliveryDate')} />
                 </Field>
-              </div>
+              ) : (
+                <div className="flex flex-col gap-3 rounded-lg border border-border-strong bg-surface-alt p-3">
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-text-faint">Delivery Confirmation</p>
+                  <Field label="Delivery Date & Time">
+                    <input
+                      type="datetime-local"
+                      className={inputClass}
+                      value={form.deliveryDateTime}
+                      onChange={set('deliveryDateTime')}
+                    />
+                  </Field>
+                  <Field label="Receiver Mobile">
+                    <input
+                      className={inputClass}
+                      value={form.deliveryContactMobile}
+                      onChange={set('deliveryContactMobile')}
+                      placeholder="Optional"
+                    />
+                  </Field>
+                  <label className="flex items-center gap-2 text-[13px] text-text-secondary">
+                    <input
+                      type="checkbox"
+                      checked={form.dateTimeConfirmed}
+                      onChange={(e) => setForm((f) => ({ ...f, dateTimeConfirmed: e.target.checked }))}
+                    />
+                    Date & Time Confirmed
+                  </label>
+                  <label className="flex items-center gap-2 text-[13px] text-text-secondary">
+                    <input
+                      type="checkbox"
+                      checked={form.customerNotified}
+                      onChange={(e) => setForm((f) => ({ ...f, customerNotified: e.target.checked }))}
+                    />
+                    Customer Notified
+                  </label>
+                </div>
+              )}
+
+              <Field label="Actual Delivery Date & Time">
+                <input
+                  type="datetime-local"
+                  className={inputClass}
+                  value={form.actualDeliveryDate}
+                  onChange={set('actualDeliveryDate')}
+                />
+              </Field>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <Field label="Driver Name">
@@ -492,6 +555,7 @@ export function TripPanel() {
                 <Field label="Status">
                   <select className={inputClass} value={form.status} onChange={set('status')}>
                     <option value="planned">Planned</option>
+                    <option value="ready_for_transporter">Ready for Transporter</option>
                     <option value="waiting_driver">Waiting Driver</option>
                     <option value="loaded">Loaded</option>
                     <option value="in_transit">In Transit</option>
@@ -553,11 +617,31 @@ export function TripPanel() {
                 </div>
               </section>
 
-              {trip.tripType === 'customer' && trip.deliveryContactMobile && (
+              {trip.tripType === 'customer' && (
                 <section>
-                  <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-text-faint">Receiver Mobile</p>
+                  <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-text-faint">Delivery Confirmation</p>
+                  <div className="flex flex-col gap-1.5 rounded-lg border border-border p-3 text-[13px]">
+                    <p className="text-text-primary">
+                      <span className="text-text-muted">Delivery Date & Time: </span>
+                      {formatDateTime(trip.deliveryDateTime)}
+                    </p>
+                    {trip.deliveryContactMobile && (
+                      <p className="text-text-primary">
+                        <span className="text-text-muted">Receiver Mobile: </span>
+                        {trip.deliveryContactMobile}
+                      </p>
+                    )}
+                    <p className="text-text-primary">{trip.dateTimeConfirmed ? '✓' : '☐'} Date & Time Confirmed</p>
+                    <p className="text-text-primary">{trip.customerNotified ? '✓' : '☐'} Customer Notified</p>
+                  </div>
+                </section>
+              )}
+
+              {trip.actualDeliveryDate && (
+                <section>
+                  <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-text-faint">Actual Delivery</p>
                   <div className="rounded-lg border border-border p-3 text-[13px]">
-                    <p className="font-medium text-text-primary">{trip.deliveryContactMobile}</p>
+                    <p className="font-medium text-text-primary">{formatDateTime(trip.actualDeliveryDate)}</p>
                   </div>
                 </section>
               )}
@@ -636,7 +720,14 @@ export function TripPanel() {
               {editable && trip.status === 'in_transit' && (
                 <button
                   type="button"
-                  onClick={() => updateTrip(trip.id, { status: 'delivered' })}
+                  onClick={() =>
+                    updateTrip(trip.id, {
+                      status: 'delivered',
+                      // Records the actual arrival timestamp at the moment of confirmation,
+                      // separate from the planned deliveryDateTime -- see 0013.
+                      actualDeliveryDate: new Date().toISOString(),
+                    })
+                  }
                   className="flex items-center justify-center gap-1.5 rounded-md bg-[#0F6B32] py-2.5 text-[13px] font-semibold text-white hover:bg-[#0B5227]"
                 >
                   <Icon name="check" className="h-3.5 w-3.5" />
