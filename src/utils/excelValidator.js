@@ -17,9 +17,9 @@ export function validateMappedRow(mapped) {
       errors.push(`Unknown Source Warehouse "${mapped.sourceWarehouseRaw}"`)
     }
   } else if (!mapped.customerRaw) {
-    errors.push('Customer is required')
+    errors.push('Client is required')
   } else if (!mapped.customerId) {
-    errors.push(`Unknown Customer "${mapped.customerRaw}"`)
+    errors.push(`Unknown Client "${mapped.customerRaw}"`)
   }
 
   if (!mapped.destination) {

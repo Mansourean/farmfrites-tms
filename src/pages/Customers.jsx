@@ -11,7 +11,7 @@ export function Customers() {
 
   return (
     <div className="flex-1 overflow-auto p-4 sm:p-6">
-      <p className="mb-3 text-[13px] text-text-muted">{customers.length} customers</p>
+      <p className="mb-3 text-[13px] text-text-muted">{customers.length} clients</p>
       <div className="overflow-hidden rounded-xl border border-border">
         {customers.map((customer, i) => {
           const tripCount = trips.filter((t) => t.customerId === customer.id).length

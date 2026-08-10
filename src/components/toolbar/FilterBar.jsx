@@ -9,7 +9,7 @@ const statusOptions = [
   { value: 'rejected', label: 'Rejected', dot: '#D92D20' },
   { value: 'planned', label: 'New Order', dot: '#0E7490' },
   { value: 'ready_for_transporter', label: 'Transportation Assignment', dot: '#C2410C' },
-  { value: 'waiting_for_loading', label: 'Ready for Loading', dot: '#A16207' },
+  { value: 'waiting_for_loading', label: 'Confirmed', dot: '#A16207' },
   { value: 'waiting_driver', label: 'Waiting Driver', dot: '#B08900' },
   { value: 'loaded', label: 'Loaded', dot: '#6B3FA0' },
   { value: 'in_transit', label: 'In Transit', dot: '#2F6FE4' },
@@ -19,7 +19,7 @@ const statusOptions = [
 
 const tripTypeOptions = [
   { value: 'all', label: 'All trip types' },
-  { value: 'customer', label: 'Customer Delivery' },
+  { value: 'customer', label: 'Client Delivery' },
   { value: 'internal', label: 'Internal Transfer' },
 ]
 
@@ -41,7 +41,7 @@ export function FilterBar({ filters, onFilterChange, onExport }) {
             type="text"
             value={filters.search}
             onChange={(e) => set('search')(e.target.value)}
-            placeholder="Search Sales No, Customer, Driver, Plate..."
+            placeholder="Search Sales No, Client, Driver, Plate..."
             className="w-full rounded-md border border-border-strong bg-surface-alt py-1 pl-7 pr-2 text-[13px] text-text-primary outline-none placeholder:text-text-faint focus:border-brand-400 focus:bg-white"
           />
         </div>

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { getAssignmentContext, submitDriverAssignment } from '../services/tripAssignment'
 import { Icon } from '../components/ui/Icon'
-import { formatDateTime } from '../utils/format'
+import { formatDate } from '../utils/format'
 
 const inputClass =
   'w-full rounded-lg border border-border-strong bg-white px-3 py-2.5 text-[14px] text-text-primary outline-none focus:border-brand-400'
@@ -108,22 +108,33 @@ export function DriverAssignment() {
 
           {status === 'form' && (
             <form className="flex flex-col gap-3.5" onSubmit={handleSubmit}>
-              <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-surface-alt p-3.5 text-[13px]">
+              <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface-alt p-3.5 text-[13px]">
                 <p className="text-text-muted">
                   Sales No: <span className="font-medium text-text-primary">{context.sales_no}</span>
                 </p>
                 {context.customer_name && (
                   <p className="text-text-muted">
-                    Customer: <span className="font-medium text-text-primary">{context.customer_name}</span>
+                    Client: <span className="font-medium text-text-primary">{context.customer_name}</span>
                   </p>
                 )}
                 <p className="text-text-muted">
                   Destination: <span className="font-medium text-text-primary">{context.destination}</span>
                 </p>
-                <p className="text-text-muted">
-                  Delivery Date & Time:{' '}
-                  <span className="font-medium text-text-primary">{formatDateTime(context.delivery_date)}</span>
-                </p>
+
+                {/* Two distinct dates, deliberately not "Date"/labeled ambiguously -- confusing
+                    Loading Date with the Client's requested delivery date is the exact mistake
+                    this screen exists to prevent. */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-md border border-[#1E9E6A]/30 bg-[#E1F5EC] px-2.5 py-2">
+                    <p className="text-[10.5px] font-semibold uppercase tracking-wide text-[#0F6B32]">Loading Date</p>
+                    <p className="text-[15px] font-semibold text-[#0F6B32]">{formatDate(context.dispatch_date)}</p>
+                  </div>
+                  <div className="rounded-md border border-[#4F7CFF]/30 bg-[#EAF0FF] px-2.5 py-2">
+                    <p className="text-[10.5px] font-semibold uppercase tracking-wide text-[#1743C4]">Requested Delivery</p>
+                    <p className="text-[15px] font-semibold text-[#1743C4]">{formatDate(context.delivery_date)}</p>
+                  </div>
+                </div>
+
                 {context.delivery_contact_mobile && (
                   <p className="text-text-muted">
                     Receiver Mobile: <span className="font-medium text-text-primary">{context.delivery_contact_mobile}</span>

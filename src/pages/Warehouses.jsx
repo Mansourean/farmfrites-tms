@@ -1,10 +1,29 @@
 import { Link } from 'react-router-dom'
-import { warehouses } from '../data/warehouses'
 import { useTrips } from '../context/TripsContext'
 import { Icon } from '../components/ui/Icon'
+import { TripStatusPill } from '../components/trips/TripStatusPill'
+import { originLabel, transporterName } from '../data/lookup'
+import { formatDate } from '../utils/format'
+
+// Operational visibility for the warehouse: what's Confirmed (driver/vehicle already
+// submitted, truck expected) and what's already Loaded (waiting to depart) -- the same two
+// statuses WarehouseScan.jsx already treats as "the warehouse's job right now" (see 0016).
+// Soonest Loading Date first (trips with no Loading Date yet sort last -- nothing to prepare
+// for yet), so the warehouse can see what's coming today/tomorrow at a glance.
+function upcomingTrips(trips) {
+  return trips
+    .filter((t) => t.status === 'waiting_for_loading' || t.status === 'loaded')
+    .sort((a, b) => {
+      if (!a.dispatchDate && !b.dispatchDate) return b.createdSeq - a.createdSeq
+      if (!a.dispatchDate) return 1
+      if (!b.dispatchDate) return -1
+      return a.dispatchDate.localeCompare(b.dispatchDate)
+    })
+}
 
 export function Warehouses() {
   const { trips } = useTrips()
+  const rows = upcomingTrips(trips)
 
   return (
     <div className="flex-1 overflow-auto p-4 sm:p-6">
@@ -22,29 +41,52 @@ export function Warehouses() {
         </Link>
       </div>
 
-      <p className="mb-3 text-[13px] text-text-muted">{warehouses.length} warehouses</p>
-      <div className="overflow-hidden rounded-xl border border-border">
-        {warehouses.map((warehouse, i) => {
-          const outbound = trips.filter((t) => t.sourceWarehouseId === warehouse.id && t.status !== 'delivered').length
-          return (
-            <div
-              key={warehouse.id}
-              className={`flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-[13px] ${i !== warehouses.length - 1 ? 'border-b border-border' : ''}`}
-            >
-              <div className="flex min-w-0 items-center gap-2.5">
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-[#E1F5EC] text-[#34B27B]">
-                  <Icon name="building" className="h-4 w-4" />
-                </span>
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-text-primary">{warehouse.name}</p>
-                  <p className="truncate text-[12px] text-text-muted">{warehouse.city}</p>
-                </div>
-              </div>
-              <span className="shrink-0 text-[12.5px] text-text-muted">{outbound} pending outbound</span>
-            </div>
-          )
-        })}
-      </div>
+      <p className="mb-3 text-[13px] text-text-muted">
+        {rows.length} confirmed/upcoming trip{rows.length === 1 ? '' : 's'}
+      </p>
+
+      {rows.length === 0 ? (
+        <div className="flex flex-col items-center gap-2 rounded-xl border border-border py-16 text-center">
+          <div className="grid h-11 w-11 place-items-center rounded-full bg-surface-alt">
+            <Icon name="warehouse" className="h-5 w-5 text-text-muted" />
+          </div>
+          <p className="text-[14px] font-medium text-text-primary">No confirmed trips coming up</p>
+          <p className="text-[13px] text-text-muted">Trips appear here once a transporter submits driver/vehicle info.</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-border">
+          <table className="w-full min-w-[760px] border-collapse text-[13px]">
+            <thead className="bg-surface-alt text-[11px] font-medium uppercase tracking-wide text-text-faint">
+              <tr>
+                <th className="border-b border-border px-3 py-2 text-left">Sales No</th>
+                <th className="border-b border-border px-3 py-2 text-left">Client</th>
+                <th className="border-b border-border px-3 py-2 text-left">Destination</th>
+                <th className="border-b border-border px-3 py-2 text-left">Transporter</th>
+                <th className="border-b border-border px-3 py-2 text-left">Loading Date</th>
+                <th className="border-b border-border px-3 py-2 text-left">Driver / Vehicle</th>
+                <th className="border-b border-border px-3 py-2 text-left">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((trip, i) => (
+                <tr key={trip.id} className={i !== rows.length - 1 ? 'border-b border-border/60' : ''}>
+                  <td className="px-3 py-2.5 font-medium text-text-primary">{trip.salesNo}</td>
+                  <td className="max-w-[180px] truncate px-3 py-2.5 text-text-primary">{originLabel(trip)}</td>
+                  <td className="max-w-[180px] truncate px-3 py-2.5 text-text-primary">{trip.destination}</td>
+                  <td className="max-w-[160px] truncate px-3 py-2.5 text-text-primary">{transporterName(trip)}</td>
+                  <td className="px-3 py-2.5 text-text-primary">{formatDate(trip.dispatchDate)}</td>
+                  <td className="max-w-[180px] truncate px-3 py-2.5 text-text-primary">
+                    {trip.driver?.name ? `${trip.driver.name} · ${trip.plateNo || '—'}` : <span className="text-text-faint">—</span>}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <TripStatusPill status={trip.status} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }

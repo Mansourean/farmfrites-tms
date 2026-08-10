@@ -46,8 +46,8 @@ export function PrintTrip() {
       <div className="mt-6">
         <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[#9a9a97]">Sales Information</p>
         {row('Sales No', trip.salesNo)}
-        {row('Trip Type', trip.tripType === 'customer' ? 'Customer Delivery' : 'Internal Transfer')}
-        {row(trip.tripType === 'customer' ? 'Customer' : 'Source Warehouse', originLabel(trip))}
+        {row('Trip Type', trip.tripType === 'customer' ? 'Client Delivery' : 'Internal Transfer')}
+        {row(trip.tripType === 'customer' ? 'Client' : 'Source Warehouse', originLabel(trip))}
         {row('Destination', trip.destination)}
         {row('Load (Tons)', trip.loadTons)}
         {row('Status', trip.status.replace('_', ' '))}
@@ -64,8 +64,8 @@ export function PrintTrip() {
 
       <div className="mt-6">
         <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[#9a9a97]">Schedule</p>
-        {row('Dispatch Date', formatDate(trip.dispatchDate))}
-        {row('Delivery Date', formatDate(trip.deliveryDate))}
+        {row('Loading Date', formatDate(trip.dispatchDate))}
+        {row('Requested Delivery Date', formatDate(trip.deliveryDate))}
       </div>
 
       {trip.remarks && (

@@ -9,7 +9,6 @@ import { RoleGuard } from './components/auth/RoleGuard'
 import { LoginPage } from './pages/LoginPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { TransportationLog } from './pages/TransportationLog'
-import { Dashboard } from './pages/Dashboard'
 import { Customers } from './pages/Customers'
 import { Transporters } from './pages/Transporters'
 import { Warehouses } from './pages/Warehouses'
@@ -33,7 +32,6 @@ function App() {
                 <Route element={<AppLayout />}>
                   <Route element={<RoleGuard />}>
                     <Route path="/" element={<TransportationLog />} />
-                    <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/customers" element={<Customers />} />
                     <Route path="/transporters" element={<Transporters />} />
                     <Route path="/warehouses" element={<Warehouses />} />

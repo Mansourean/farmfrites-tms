@@ -20,7 +20,10 @@ export function buildWhatsappMessage(trip, assignmentLink) {
     lines.push(`Destination: ${trip.destination}`)
   }
 
-  lines.push(`Dispatch Date: ${formatDate(trip.dispatchDate)}`)
+  // Two distinct, clearly labeled dates -- never just "Date", so the transporter can never
+  // confuse when the truck must be at the factory with when the goods must reach the client.
+  lines.push(`LOADING DATE: ${formatDate(trip.dispatchDate)}`)
+  lines.push(`REQUESTED DELIVERY: ${formatDate(trip.deliveryDate)}`)
   lines.push('')
   lines.push('Please assign:')
   lines.push('')

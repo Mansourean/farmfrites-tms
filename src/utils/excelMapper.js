@@ -2,7 +2,7 @@
 export const EXPECTED_HEADERS = [
   'Sales No',
   'Trip Type',
-  'Customer',
+  'Client',
   'Source Warehouse',
   'Destination',
   'Transporter',
@@ -36,7 +36,7 @@ export const findCustomerByName = (name, customers) => findByName(customers, nam
 export const findWarehouseByName = (name, warehouses) => findByName(warehouses, name)
 export const findTransporterByName = (name, transporters) => findByName(transporters, name)
 
-// Defaults to "Customer Delivery" when the column is blank or unrecognized.
+// Defaults to "Client Delivery" when the column is blank or unrecognized.
 export function resolveTripType(text) {
   const value = String(text ?? '').trim().toLowerCase()
   if (value.includes('internal')) return 'internal'
@@ -54,8 +54,10 @@ export function resolveStatus(text) {
   if (value.includes('cancel')) return 'cancelled'
   if (value.includes('deliver')) return 'delivered'
   if (value.includes('transit')) return 'in_transit'
-  // Matches both the current label ("Ready for Loading") and the earlier one ("Waiting for
-  // Loading", still the literal DB value -- see 0016) so previously-exported files still import.
+  // Matches the current label ("Confirmed") and both earlier ones ("Ready for Loading",
+  // "Waiting for Loading", still the literal DB value -- see 0016) so previously-exported files
+  // of any vintage still import correctly.
+  if (value.includes('confirm')) return 'waiting_for_loading'
   if ((value.includes('ready') || value.includes('waiting')) && value.includes('load')) return 'waiting_for_loading'
   if (value.includes('load')) return 'loaded'
   if (value.includes('assignment') || value.includes('ready')) return 'ready_for_transporter'
@@ -99,7 +101,9 @@ export function mapExcelRow(rawRow, masterData) {
   }
 
   const tripType = resolveTripType(get('Trip Type'))
-  const customerRaw = get('Customer')
+  // Accepts both the current header ("Client") and the earlier one ("Customer", still what
+  // Sales' own template may use) -- whichever column is actually present in the sheet wins.
+  const customerRaw = get('Client') || get('Customer')
   const sourceWarehouseRaw = get('Source Warehouse')
   const destination = get('Destination')
   const transporterRaw = get('Transporter')

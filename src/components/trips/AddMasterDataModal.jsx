@@ -11,7 +11,7 @@ import { Icon } from '../ui/Icon'
 // name-only and its phone added later via a proper edit UI when one exists; `extraField` is kept
 // as a generic mechanism below in case a future entity genuinely needs a second required input.
 const ENTITY_CONFIG = {
-  customer: { title: 'Add Customer', label: 'Customer Name', placeholder: 'e.g. Panda Retail Co.', create: createCustomer },
+  customer: { title: 'Add Client', label: 'Client Name', placeholder: 'e.g. Panda Retail Co.', create: createCustomer },
   transporter: {
     title: 'Add Transporter',
     label: 'Transporter Name',

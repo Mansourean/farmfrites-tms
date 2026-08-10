@@ -262,6 +262,28 @@ export function TripPanel() {
       return
     }
 
+    // Same-Loading-Date duplicate driver/vehicle guard, mirroring the DB-side check in
+    // submit_driver_assignment (see 0019) for the dispatcher's own manual Driver Name/Phone/
+    // Plate No entry here -- that RPC only ever runs for the transporter's own self-service
+    // link, so this is the only place that catches a dispatcher typing the same driver/truck
+    // onto two trips loading the same day. Only checked once a Loading Date is actually set --
+    // nothing meaningful to compare against otherwise.
+    if (form.dispatchDate && (form.plateNo.trim() || form.driverPhone.trim())) {
+      const plate = form.plateNo.trim().toUpperCase()
+      const phone = form.driverPhone.trim()
+      const conflict = trips.find(
+        (t) =>
+          t.id !== trip?.id &&
+          t.dispatchDate === form.dispatchDate &&
+          !['delivered', 'cancelled', 'rejected'].includes(t.status) &&
+          ((plate && t.plateNo?.trim().toUpperCase() === plate) || (phone && t.driver?.phone === phone)),
+      )
+      if (conflict) {
+        setError(`This driver or vehicle is already assigned to trip ${conflict.salesNo} on the same Loading Date.`)
+        return
+      }
+    }
+
     const destination =
       form.tripType === 'internal'
         ? warehouses.find((w) => w.id === form.destinationWarehouseId)?.name ?? ''
@@ -381,7 +403,7 @@ export function TripPanel() {
               <Field label="Trip Type">
                 <div className="flex rounded-md border border-border-strong p-0.5">
                   {[
-                    { value: 'customer', label: 'Customer Delivery' },
+                    { value: 'customer', label: 'Client Delivery' },
                     { value: 'internal', label: 'Internal Transfer' },
                   ].map((option) => (
                     <button
@@ -402,7 +424,7 @@ export function TripPanel() {
 
               {form.tripType === 'customer' ? (
                 <div className="flex flex-col gap-3 rounded-lg border border-border-strong p-3">
-                  <p className="text-[11px] font-medium uppercase tracking-wide text-text-faint">Customer</p>
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-text-faint">Client</p>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <Field
                       label="Client"
@@ -523,6 +545,18 @@ export function TripPanel() {
                 <Field label="Loading Date">
                   <input type="date" className={inputClass} value={form.dispatchDate} onChange={set('dispatchDate')} />
                 </Field>
+                {/* Only meaningful for Customer Delivery -- suggestedDispatchDate (see
+                    tripsMapping.js) never suggests anything for Internal Transfer. Surfaces the
+                    "missing transit time" case explicitly rather than silently doing nothing,
+                    per the approved requirement -- never invents a number, just says so. */}
+                {form.tripType === 'customer' &&
+                  form.destination &&
+                  !form.dispatchDate &&
+                  !destinations.find((d) => d.name === form.destination)?.transitDays && (
+                    <p className="-mt-1.5 text-[12px] text-[#8A5A00]">
+                      Transit time for {form.destination} isn't set yet, so a Loading Date can't be suggested — enter one manually, or set it once in Settings → Destinations.
+                    </p>
+                  )}
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -542,7 +576,7 @@ export function TripPanel() {
                   <select className={inputClass} value={form.status} onChange={set('status')}>
                     <option value="planned">New Order</option>
                     <option value="ready_for_transporter">Transportation Assignment</option>
-                    <option value="waiting_for_loading">Ready for Loading</option>
+                    <option value="waiting_for_loading">Confirmed</option>
                     <option value="waiting_driver">Waiting Driver</option>
                     <option value="loaded">Loaded</option>
                     <option value="in_transit">In Transit</option>
@@ -575,7 +609,7 @@ export function TripPanel() {
                   <div>
                     <p className="text-text-muted">Trip Type</p>
                     <p className="font-medium text-text-primary">
-                      {trip.tripType === 'customer' ? 'Customer Delivery' : 'Internal Transfer'}
+                      {trip.tripType === 'customer' ? 'Client Delivery' : 'Internal Transfer'}
                     </p>
                   </div>
                   <div className="col-span-2">

@@ -1,12 +1,12 @@
 const TRIP_TYPE_LABELS = {
-  customer: 'Customer Delivery',
+  customer: 'Client Delivery',
   internal: 'Internal Transfer',
 }
 
 const STATUS_LABELS = {
   planned: 'New Order',
   ready_for_transporter: 'Transportation Assignment',
-  waiting_for_loading: 'Ready for Loading',
+  waiting_for_loading: 'Confirmed',
   waiting_driver: 'Waiting Driver',
   loaded: 'Loaded',
   in_transit: 'In Transit',
@@ -23,7 +23,7 @@ function tripToRow(trip) {
   return {
     'Sales No': trip.salesNo,
     'Trip Type': TRIP_TYPE_LABELS[trip.tripType] ?? trip.tripType,
-    Customer: trip.tripType === 'customer' ? trip.customerName ?? '' : '',
+    Client: trip.tripType === 'customer' ? trip.customerName ?? '' : '',
     'Source Warehouse': trip.sourceWarehouseName ?? '',
     Destination: trip.destination,
     Transporter: trip.transporterName ?? '',

@@ -46,7 +46,7 @@ function PreviewTable({ result }) {
             <tr>
               <th className="border-b border-border px-3 py-2 text-left font-medium">Row</th>
               <th className="border-b border-border px-3 py-2 text-left font-medium">Sales No</th>
-              <th className="border-b border-border px-3 py-2 text-left font-medium">Customer / Warehouse</th>
+              <th className="border-b border-border px-3 py-2 text-left font-medium">Client / Warehouse</th>
               <th className="border-b border-border px-3 py-2 text-left font-medium">Destination</th>
               <th className="border-b border-border px-3 py-2 text-left font-medium">Dispatch Date</th>
               <th className="border-b border-border px-3 py-2 text-left font-medium">Status</th>
