@@ -7,13 +7,15 @@ import { Icon } from '../ui/Icon'
 
 // Approved mobile nav cleanup: the desktop sidebar is now permanently narrow/icon-only
 // (no resize, no expand-to-labels) instead of the old drag-to-resize/collapse behavior --
-// the mobile off-canvas drawer below is untouched and still shows full labels.
+// the mobile off-canvas drawer below is untouched (still full labels) but now shares the same
+// dark rail treatment for a more modern look, using the --color-sidebar-* tokens (theme.css)
+// that already existed for exactly this but had never actually been applied anywhere.
 const DESKTOP_WIDTH = 72
 
 function SectionLabel({ children, collapsed }) {
-  if (collapsed) return <div className="mx-2 mt-4 h-px bg-border" />
+  if (collapsed) return <div className="mx-2 mt-4 h-px bg-sidebar-border" />
   return (
-    <p className="px-2 pb-1 pt-4 text-[11px] font-medium uppercase tracking-wide text-text-faint">
+    <p className="px-2 pb-1 pt-4 text-[11px] font-medium uppercase tracking-wide text-sidebar-text-faint">
       {children}
     </p>
   )
@@ -31,8 +33,8 @@ function NavItem({ icon, color, label, path, end, onNavigate, collapsed }) {
           'flex items-center gap-2 rounded-md px-2 py-[5px] text-[13px] transition-colors',
           collapsed && 'justify-center px-0 py-2',
           isActive
-            ? 'bg-surface-hover font-medium text-text-primary'
-            : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary',
+            ? 'bg-sidebar-active font-medium text-sidebar-text'
+            : 'text-sidebar-text-muted hover:bg-sidebar-hover hover:text-sidebar-text',
         )
       }
     >
@@ -58,16 +60,16 @@ function SidebarContent({ onNavigate, collapsed = false, groups }) {
         ))}
       </nav>
 
-      <div className={cn('border-t border-border py-3', collapsed ? 'flex justify-center' : 'px-3')}>
+      <div className={cn('border-t border-sidebar-border py-3', collapsed ? 'flex justify-center' : 'px-3')}>
         {collapsed ? (
           <span className="h-1.5 w-1.5 rounded-full bg-[#34B27B]" title="Farm Frites KSA · Production · v1.0" />
         ) : (
           <>
-            <p className="text-[12.5px] font-semibold text-text-primary">Farm Frites KSA</p>
-            <div className="mt-1 flex items-center gap-1.5 text-[11.5px] text-text-muted">
+            <p className="text-[12.5px] font-semibold text-sidebar-text">Farm Frites KSA</p>
+            <div className="mt-1 flex items-center gap-1.5 text-[11.5px] text-sidebar-text-muted">
               <span className="h-1.5 w-1.5 rounded-full bg-[#34B27B]" />
               Production
-              <span className="text-text-faint">· Version 1.0</span>
+              <span className="text-sidebar-text-faint">· Version 1.0</span>
             </div>
           </>
         )}
@@ -89,10 +91,10 @@ export function Sidebar({ open = false, onClose }) {
       {open && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-          <aside className="relative flex h-full w-[248px] flex-col bg-surface-alt shadow-[8px_0_24px_rgba(0,0,0,0.15)]">
+          <aside className="relative flex h-full w-[248px] flex-col bg-sidebar shadow-[8px_0_24px_rgba(0,0,0,0.35)]">
             <div className="flex items-center justify-between px-3 pt-3">
-              <span className="text-[13px] font-semibold text-text-primary">Farm Frites</span>
-              <button type="button" onClick={onClose} className="rounded-md p-1.5 text-text-muted hover:bg-surface-hover">
+              <span className="text-[13px] font-semibold text-sidebar-text">Farm Frites</span>
+              <button type="button" onClick={onClose} className="rounded-md p-1.5 text-sidebar-text-muted hover:bg-sidebar-hover hover:text-sidebar-text">
                 <Icon name="x" className="h-4 w-4" />
               </button>
             </div>
@@ -101,7 +103,7 @@ export function Sidebar({ open = false, onClose }) {
         </div>
       )}
 
-      <aside className="hidden shrink-0 flex-col bg-surface-alt md:flex" style={{ width: DESKTOP_WIDTH }}>
+      <aside className="hidden shrink-0 flex-col bg-sidebar md:flex" style={{ width: DESKTOP_WIDTH }}>
         <SidebarContent collapsed groups={visibleGroups} />
       </aside>
     </>

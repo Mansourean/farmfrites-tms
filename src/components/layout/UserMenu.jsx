@@ -44,6 +44,17 @@ export function UserMenu() {
             type="button"
             onClick={() => {
               close()
+              navigate('/settings')
+            }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+          >
+            <Icon name="settings" className="h-3.5 w-3.5" />
+            Settings
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              close()
               handleLogout()
             }}
             className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-text-secondary hover:bg-surface-hover hover:text-text-primary"

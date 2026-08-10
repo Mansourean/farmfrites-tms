@@ -8,15 +8,6 @@ import { autoReadyStatus, suggestedDispatchDate } from '../../lib/tripsMapping'
 import { formatDate } from '../../utils/format'
 import { getInitials } from '../../utils/initials'
 
-function WaitingDriverBadge() {
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-[#FBE7C2] px-2 py-[2px] text-[11px] font-semibold text-[#8A4B00]">
-      <Icon name="clock" className="h-3 w-3" />
-      Waiting Driver
-    </span>
-  )
-}
-
 function NeedsDateBadge() {
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-[#FBE7C2] px-2 py-[2px] text-[11px] font-semibold text-[#8A4B00]">
@@ -159,13 +150,15 @@ export function SystemCell({ columnId, trip }) {
       return <TransporterCell trip={trip} />
 
     case 'driver':
+      // Blank, no alert, until the transporter submits driver info via the assignment link --
+      // this isn't something the coordinator is expected to fill in themselves (see 0016).
       return trip.driver ? (
         <span className="flex min-w-0 items-center gap-1.5">
           <Avatar name={trip.driver.name} initials={getInitials(trip.driver.name)} size={18} />
           <span className="truncate text-text-secondary">{trip.driver.name}</span>
         </span>
       ) : (
-        <WaitingDriverBadge />
+        <span className="text-text-faint">—</span>
       )
 
     case 'plateNo':

@@ -53,10 +53,7 @@ export function TripCard({ trip }) {
               <span className="truncate">{trip.driver.name}</span>
             </>
           ) : (
-            <span className="inline-flex items-center gap-1 rounded-full bg-[#FBE7C2] px-2 py-[2px] text-[11px] font-semibold text-[#8A4B00]">
-              <Icon name="clock" className="h-3 w-3" />
-              Waiting Driver
-            </span>
+            <span className="text-text-faint">—</span>
           )}
         </div>
         <div className="flex items-center gap-1.5 text-text-secondary">

@@ -8,10 +8,13 @@
   --color-border: #ececeb;
   --color-border-strong: #e2e2e0;
 
+  /* Darkened one step each (previously felt too pale on column/filter text, per feedback) --
+     same 4-level hierarchy (primary > secondary > muted > faint), just shifted closer to
+     black overall. */
   --color-text-primary: #1a1a19;
-  --color-text-secondary: #6f6f6d;
-  --color-text-muted: #9a9a97;
-  --color-text-faint: #b8b8b5;
+  --color-text-secondary: #4d4d4a;
+  --color-text-muted: #6f6f6c;
+  --color-text-faint: #929290;
 
   --color-surface-canvas: #f7f8f8;
 

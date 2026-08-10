@@ -1,4 +1,7 @@
 import { useTrips } from '../../context/TripsContext'
+import { useTripPanel } from '../../context/TripPanelContext'
+import { useAuth } from '../../context/AuthContext'
+import { canEdit } from '../../data/roles'
 import { Icon } from '../ui/Icon'
 import { FilterDropdown } from './FilterDropdown'
 import { DateFilter } from './DateFilter'
@@ -23,8 +26,10 @@ const tripTypeOptions = [
   { value: 'internal', label: 'Internal Transfer' },
 ]
 
-export function FilterBar({ title, count, filters, onFilterChange, onExport }) {
+export function FilterBar({ filters, onFilterChange, onExport }) {
   const { transporters } = useTrips()
+  const { openCreate } = useTripPanel()
+  const { currentUser } = useAuth()
   const transporterOptions = [
     { value: 'all', label: 'All transporters' },
     ...transporters.map((t) => ({ value: t.id, label: t.name })),
@@ -34,11 +39,16 @@ export function FilterBar({ title, count, filters, onFilterChange, onExport }) {
 
   return (
     <div className="flex min-h-toolbar shrink-0 flex-wrap items-center gap-x-5 gap-y-1.5 px-4 py-2">
-      <div className="flex shrink-0 items-center gap-1.5 px-1.5 py-1 text-[13px] font-medium text-text-primary">
-        <Icon name="list" className="h-3.5 w-3.5 text-text-muted" />
-        {title}
-        <span className="text-text-muted">{count}</span>
-      </div>
+      {canEdit(currentUser?.role) && (
+        <button
+          type="button"
+          onClick={openCreate}
+          className="flex shrink-0 items-center gap-1.5 rounded-md bg-text-primary px-2.5 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-[#333331]"
+        >
+          <Icon name="plus" className="h-3.5 w-3.5" />
+          New Trip
+        </button>
+      )}
 
       <div className="flex flex-wrap items-center gap-1">
         <div className="relative mr-1 w-full sm:w-64">

@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { navGroups } from '../../data/navigation'
-import { useTripPanel } from '../../context/TripPanelContext'
 import { useAuth } from '../../context/AuthContext'
 import { canEdit } from '../../data/roles'
 import { Icon } from '../ui/Icon'
@@ -13,7 +12,6 @@ const allItems = navGroups.flatMap((g) => g.items)
 
 export function TopBar({ onMenuClick }) {
   const location = useLocation()
-  const { openCreate } = useTripPanel()
   const { currentUser } = useAuth()
   const [reportOpen, setReportOpen] = useState(false)
   const current = allItems.find((item) => item.path === location.pathname)
@@ -65,19 +63,7 @@ export function TopBar({ onMenuClick }) {
       </div>
 
       <div className="flex shrink-0 items-center gap-1 md:gap-2">
-        {showCreateActions && (
-          <>
-            <ImportExcelButton />
-            <button
-              type="button"
-              onClick={openCreate}
-              className="flex items-center gap-1.5 rounded-md bg-text-primary px-2.5 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-[#333331] md:px-3"
-            >
-              <Icon name="plus" className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">New Trip</span>
-            </button>
-          </>
-        )}
+        {showCreateActions && <ImportExcelButton />}
         <button
           type="button"
           onClick={() => setReportOpen(true)}
