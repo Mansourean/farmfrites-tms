@@ -1,9 +1,10 @@
-import { transporters } from '../data/transporters'
 import { useTrips } from '../context/TripsContext'
 import { Icon } from '../components/ui/Icon'
 
+// Reads live Supabase master data -- this page used to render the old static demo dataset
+// (src/data/transporters.js); fixed here now that it's reachable from the sidebar again.
 export function Transporters() {
-  const { trips } = useTrips()
+  const { trips, transporters } = useTrips()
 
   return (
     <div className="flex-1 overflow-auto p-4 sm:p-6">

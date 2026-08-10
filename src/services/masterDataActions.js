@@ -34,3 +34,12 @@ export async function createDestination(name, transitDays = null) {
   if (error) throw new Error(error.message)
   return data
 }
+
+// Direct table update, not an RPC (see 0018) -- the column-scoped grant + RLS policy are the
+// real boundary (admin/dispatcher, active accounts only), same pattern as toggleUserStatus's
+// `profiles.status` update. Lets Transit Days be corrected/added after a destination already
+// exists, which create_destination alone can never do.
+export async function updateDestinationTransitDays(id, transitDays) {
+  const { error } = await supabase.from('destinations').update({ transit_days: transitDays }).eq('id', id)
+  if (error) throw new Error(error.message)
+}

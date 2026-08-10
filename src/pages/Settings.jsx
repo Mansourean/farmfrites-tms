@@ -1,16 +1,15 @@
 import { useState } from 'react'
 import { Icon } from '../components/ui/Icon'
-import { Customers } from './Customers'
-import { Transporters } from './Transporters'
-import { Warehouses } from './Warehouses'
+import { Destinations } from './settings/Destinations'
 import { UserManagement } from './settings/UserManagement'
 import { useAuth } from '../context/AuthContext'
 
+// Customers/Transporters moved to the sidebar (approved) -- they're full pages of their own
+// now, not Settings tabs. Warehouses isn't needed here. Destinations stays in Settings since
+// it's an occasional admin task (Transit Days upkeep -- see 0018), not daily-use navigation.
 const tabs = [
   { key: 'users', label: 'Users', icon: 'users' },
-  { key: 'customers', label: 'Customers', icon: 'userCircle' },
-  { key: 'transporters', label: 'Transporters', icon: 'truck' },
-  { key: 'warehouses', label: 'Warehouses', icon: 'building' },
+  { key: 'destinations', label: 'Destinations', icon: 'mapPin' },
   { key: 'general', label: 'General', icon: 'settings' },
 ]
 
@@ -79,9 +78,7 @@ export function Settings() {
       </div>
 
       {activeTab === 'users' && <UserManagement currentUserId={currentUser?.id} />}
-      {activeTab === 'customers' && <Customers />}
-      {activeTab === 'transporters' && <Transporters />}
-      {activeTab === 'warehouses' && <Warehouses />}
+      {activeTab === 'destinations' && <Destinations />}
       {activeTab === 'general' && <GeneralTab />}
     </div>
   )
