@@ -46,7 +46,12 @@ function NavItem({ icon, color, label, path, end, onNavigate, collapsed }) {
               style={{ backgroundColor: color }}
             />
           )}
-          <Icon name={icon} className="h-[15px] w-[15px] shrink-0" style={{ color }} />
+          <span
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] transition-colors"
+            style={{ backgroundColor: isActive ? `${color}22` : `${color}12` }}
+          >
+            <Icon name={icon} className="h-4 w-4" style={{ color }} />
+          </span>
           {!collapsed && <span className="flex-1 truncate">{label}</span>}
         </>
       )}
@@ -57,15 +62,7 @@ function NavItem({ icon, color, label, path, end, onNavigate, collapsed }) {
 function SidebarContent({ onNavigate, collapsed = false, groups }) {
   return (
     <>
-      {collapsed && (
-        <div className="flex justify-center pb-1 pt-3">
-          <span className="grid h-8 w-8 place-items-center rounded-[8px] bg-accent-green-500 text-[11px] font-bold text-white">
-            FF
-          </span>
-        </div>
-      )}
-
-      <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 pb-3 pt-2">
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 pb-3 pt-3">
         {groups.map((group) => (
           <div key={group.label}>
             <SectionLabel collapsed={collapsed}>{group.label}</SectionLabel>
