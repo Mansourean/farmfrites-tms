@@ -21,7 +21,7 @@ export function TripCard({ trip }) {
       style={{ borderLeft: `3px solid ${accentColor}` }}
       className={cn(
         'flex flex-col gap-2 border-b border-border p-2.5 pl-[13px] transition-colors duration-700 active:bg-surface-hover',
-        isFresh && 'bg-[#E1F5EC]',
+        isFresh && 'bg-[var(--color-success-bg)]',
       )}
     >
       <div className="flex items-start justify-between gap-2">

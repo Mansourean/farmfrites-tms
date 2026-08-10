@@ -10,7 +10,7 @@ import { getInitials } from '../../utils/initials'
 
 function NeedsDateBadge() {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-[#FBE7C2] px-2 py-[2px] text-[11px] font-semibold text-[#8A4B00]">
+    <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-warning-bg)] px-2 py-[2px] text-[11px] font-semibold text-[var(--color-warning-text)]">
       <Icon name="clock" className="h-3 w-3" />
       Needs Date
     </span>
@@ -55,7 +55,7 @@ function DeliveryDateCell({ trip }) {
             ...(dispatchDate ? { dispatchDate } : {}),
           })
         }}
-        className="w-full rounded border border-border-strong bg-white px-1.5 py-1 text-[12.5px] text-text-primary outline-none focus:border-accent-green-500"
+        className="w-full rounded border border-border-strong bg-surface px-1.5 py-1 text-[12.5px] text-text-primary outline-none focus:border-accent-green-500"
       />
     )
   }
@@ -71,7 +71,11 @@ function DeliveryDateCell({ trip }) {
       }}
       className="flex w-full items-center text-left"
     >
-      {needsDate ? <NeedsDateBadge /> : <span className="text-text-primary">{formatDate(trip.deliveryDate)}</span>}
+      {needsDate ? (
+        <NeedsDateBadge />
+      ) : (
+        <span className="font-medium text-[var(--color-date-requested)]">{formatDate(trip.deliveryDate)}</span>
+      )}
     </button>
   )
 }
@@ -100,7 +104,7 @@ function TransporterCell({ trip }) {
           setEditing(false)
           updateTrip(trip.id, { transporterId: e.target.value })
         }}
-        className="w-full rounded border border-border-strong bg-white px-1.5 py-1 text-[12.5px] text-text-primary outline-none focus:border-accent-green-500"
+        className="w-full rounded border border-border-strong bg-surface px-1.5 py-1 text-[12.5px] text-text-primary outline-none focus:border-accent-green-500"
       >
         <option value="">Not assigned yet</option>
         {transporters.map((t) => (
@@ -129,7 +133,7 @@ function TransporterCell({ trip }) {
 export function SystemCell({ columnId, trip }) {
   switch (columnId) {
     case 'salesNo':
-      return <span className="truncate font-semibold text-text-primary hover:underline">{trip.salesNo}</span>
+      return <span className="truncate font-medium text-text-primary hover:underline">{trip.salesNo}</span>
 
     case 'origin':
       return (
@@ -171,7 +175,7 @@ export function SystemCell({ columnId, trip }) {
       return <span className="truncate text-text-primary">{trip.vehicleType || <span className="text-text-faint">—</span>}</span>
 
     case 'dispatchDate':
-      return <span className="text-text-primary">{formatDate(trip.dispatchDate)}</span>
+      return <span className="font-medium text-[var(--color-date-loading)]">{formatDate(trip.dispatchDate)}</span>
 
     case 'deliveryDate':
       return <DeliveryDateCell trip={trip} />

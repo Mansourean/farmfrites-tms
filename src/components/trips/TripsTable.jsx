@@ -46,7 +46,7 @@ function HeaderCell({ column, isLast }) {
   }
 
   return (
-    <div className={cn('group/head relative flex h-9 items-center gap-1.5 px-3', !isLast && 'border-r border-border/70')}>
+    <div className={cn('group/head relative flex h-9 items-center gap-1.5 px-3', !isLast && 'border-r border-border/50')}>
       <Icon name={column.icon} className="h-3.5 w-3.5 shrink-0 text-text-muted" />
       {editing ? (
         <input
@@ -62,7 +62,7 @@ function HeaderCell({ column, isLast }) {
             }
           }}
           onClick={(e) => e.stopPropagation()}
-          className="min-w-0 flex-1 rounded border border-brand-400 bg-white px-1 text-[12.5px] outline-none"
+          className="min-w-0 flex-1 rounded border border-brand-400 bg-surface px-1 text-[12.5px] outline-none"
         />
       ) : (
         <span
@@ -103,10 +103,10 @@ export function TripsTable({ trips }) {
   return (
     <div className="min-w-max">
       <div
-        className="sticky top-0 z-20 grid border-b border-border border-l-[3px] border-l-transparent bg-white text-[12.5px] font-medium text-text-secondary"
+        className="sticky top-0 z-20 grid border-b border-border border-l-[3px] border-l-transparent bg-surface-alt text-[12.5px] font-medium text-text-secondary"
         style={{ gridTemplateColumns: gridTemplate }}
       >
-        <div className="flex h-9 items-center justify-center border-r border-border/70">
+        <div className="flex h-9 items-center justify-center border-r border-border/60">
           <Checkbox checked={allSelected} onChange={toggleAll} />
         </div>
         {visibleColumns.map((column) => (
@@ -127,9 +127,9 @@ export function TripsTable({ trips }) {
               ref={setRowRef(trip.id)}
               onClick={() => openView(trip.id, 'details')}
               className={cn(
-                'group relative grid cursor-pointer border-b border-border/60 border-l-[3px] text-[13px] text-text-primary',
+                'group relative grid cursor-pointer border-b border-border/50 border-l-[3px] bg-surface text-[13px] text-text-primary',
                 'hover:z-10 hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)]',
-                isFresh ? 'bg-[#E1F5EC]' : isSelected ? 'bg-brand-50/40' : 'hover:bg-surface-hover',
+                isFresh ? 'bg-[var(--color-success-bg)]' : isSelected ? 'bg-brand-50/40' : 'hover:bg-surface-hover',
               )}
               style={{
                 gridTemplateColumns: gridTemplate,
@@ -137,12 +137,12 @@ export function TripsTable({ trips }) {
                 transition: 'background-color 700ms ease, box-shadow 200ms ease',
               }}
             >
-              <div className="flex h-11 items-center justify-center border-r border-border/70">
+              <div className="flex h-12 items-center justify-center border-r border-border/40">
                 <Checkbox checked={isSelected} onChange={() => toggleRow(trip.id)} />
               </div>
 
               {visibleColumns.map((column) => (
-                <div key={column.id} className="flex h-11 min-w-0 items-center border-r border-border/70 px-3">
+                <div key={column.id} className="flex h-12 min-w-0 items-center border-r border-border/40 px-3">
                   {column.system ? (
                     <SystemCell columnId={column.id} trip={trip} />
                   ) : (
@@ -155,7 +155,7 @@ export function TripsTable({ trips }) {
                 </div>
               ))}
 
-              <div className="flex h-11 items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
+              <div className="flex h-12 items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
                 <RowQuickActions tripId={trip.id} />
               </div>
             </div>

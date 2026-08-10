@@ -57,7 +57,7 @@ export function CustomCell({ column, value, onChange }) {
       if (e.key === 'Enter') commit()
       if (e.key === 'Escape') cancel()
     },
-    className: 'w-full rounded border border-brand-400 bg-white px-1.5 py-0.5 text-[13px] text-text-primary outline-none',
+    className: 'w-full rounded border border-brand-400 bg-surface px-1.5 py-0.5 text-[13px] text-text-primary outline-none',
   }
 
   if (column.fieldType === 'dropdown') {

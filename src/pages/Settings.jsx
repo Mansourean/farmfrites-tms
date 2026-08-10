@@ -3,6 +3,7 @@ import { Icon } from '../components/ui/Icon'
 import { Destinations } from './settings/Destinations'
 import { UserManagement } from './settings/UserManagement'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
 
 // Customers/Transporters moved to the sidebar (approved) -- they're full pages of their own
 // now, not Settings tabs. Warehouses isn't needed here. Destinations stays in Settings since
@@ -21,17 +22,50 @@ const generalRows = [
   { label: 'Time Zone', value: 'Asia/Riyadh (GMT+3)' },
 ]
 
+function AppearanceCard() {
+  const { theme, setTheme } = useTheme()
+  const options = [
+    { value: 'light', label: 'Light', icon: 'sun' },
+    { value: 'dark', label: 'Dark', icon: 'moon' },
+  ]
+  return (
+    <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-border p-4">
+      <div>
+        <p className="text-[13px] font-medium text-text-primary">Appearance</p>
+        <p className="text-[12.5px] text-text-muted">Choose how Farm Frites TMS looks on this device.</p>
+      </div>
+      <div className="flex shrink-0 rounded-md border border-border-strong bg-surface-alt p-0.5">
+        {options.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => setTheme(option.value)}
+            className={`flex items-center gap-1.5 rounded-[5px] px-2.5 py-1.5 text-[12.5px] font-medium transition-colors ${
+              theme === option.value ? 'bg-surface text-text-primary shadow-sm' : 'text-text-muted hover:text-text-secondary'
+            }`}
+          >
+            <Icon name={option.icon} className="h-3.5 w-3.5" />
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function GeneralTab() {
   return (
     <div className="flex-1 overflow-auto p-4 sm:p-6">
       <div className="max-w-xl">
         <div className="flex items-center gap-3 rounded-xl border border-border p-4">
-          <span className="grid h-11 w-11 place-items-center rounded-lg bg-text-primary text-[14px] font-bold text-white">FF</span>
+          <span className="grid h-11 w-11 place-items-center rounded-lg bg-[var(--color-ink)] text-[14px] font-bold text-[var(--color-ink-text)]">FF</span>
           <div>
             <p className="text-[14px] font-semibold text-text-primary">Farm Frites</p>
             <p className="text-[12.5px] text-text-muted">Transportation Management System</p>
           </div>
         </div>
+
+        <AppearanceCard />
 
         <div className="mt-4 overflow-hidden rounded-xl border border-border">
           {generalRows.map((row, i) => (

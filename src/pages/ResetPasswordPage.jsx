@@ -11,7 +11,7 @@ import { Icon } from '../components/ui/Icon'
 // currentUser the way LoginPage does, so the recovery session can't bounce the user away
 // before they set a new password.
 const inputClass =
-  'rounded-lg border border-border-strong bg-white px-3 py-2.5 text-[14px] text-text-primary outline-none focus:border-brand-400'
+  'rounded-lg border border-border-strong bg-surface px-3 py-2.5 text-[14px] text-text-primary outline-none focus:border-brand-400'
 
 export function ResetPasswordPage() {
   const navigate = useNavigate()
@@ -56,7 +56,7 @@ export function ResetPasswordPage() {
     <div className="flex min-h-screen items-center justify-center bg-surface-alt px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center gap-2">
-          <span className="grid h-11 w-11 place-items-center rounded-[10px] bg-text-primary text-[15px] font-bold text-white">
+          <span className="grid h-11 w-11 place-items-center rounded-[10px] bg-[var(--color-ink)] text-[15px] font-bold text-[var(--color-ink-text)]">
             FF
           </span>
           <div className="text-center leading-[1.2]">
@@ -65,11 +65,11 @@ export function ResetPasswordPage() {
           </div>
         </div>
 
-        <div className="mt-6 flex flex-col gap-3.5 rounded-xl border border-border bg-white p-6 shadow-sm">
+        <div className="mt-6 flex flex-col gap-3.5 rounded-xl border border-border bg-surface p-6 shadow-sm">
           <p className="text-[15px] font-semibold text-text-primary">Set a new password</p>
 
           {done ? (
-            <p className="rounded-md bg-[#DAF3E3] px-3 py-2 text-[12.5px] font-medium text-[#0F6B32]">
+            <p className="rounded-md bg-[var(--color-success-strong-bg)] px-3 py-2 text-[12.5px] font-medium text-[var(--color-success-strong-text)]">
               Password updated. Redirecting to login…
             </p>
           ) : (
@@ -106,12 +106,12 @@ export function ResetPasswordPage() {
                 />
               </label>
 
-              {error && <p className="rounded-md bg-[#FBE7E5] px-3 py-2 text-[12.5px] font-medium text-[#B42318]">{error}</p>}
+              {error && <p className="rounded-md bg-[var(--color-danger-bg)] px-3 py-2 text-[12.5px] font-medium text-[var(--color-danger-text)]">{error}</p>}
 
               <button
                 type="submit"
                 disabled={!password || !confirmPassword || submitting}
-                className="mt-1 flex items-center justify-center gap-1.5 rounded-lg bg-text-primary py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-[#333331] disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-1 flex items-center justify-center gap-1.5 rounded-lg bg-[var(--color-ink)] py-2.5 text-[14px] font-semibold text-[var(--color-ink-text)] transition-colors hover:bg-[var(--color-ink-hover)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {submitting ? 'Updating…' : 'Update password'}
               </button>

@@ -12,6 +12,19 @@
     <meta name="apple-mobile-web-app-title" content="Farm Frites TMS" />
     <meta name="description" content="Farm Frites KSA — Transportation Management System" />
     <title>Farm Frites — Transportation Management System</title>
+    <script>
+      // Blocking, runs before first paint -- applies a saved dark-mode choice to <html> before
+      // React ever mounts, so there is no flash of light-mode styling on load/refresh (see
+      // ThemeContext.jsx, which owns this same localStorage key at runtime). Defaults to light
+      // (no attribute) when nothing is stored or storage is unavailable (e.g. private browsing).
+      ;(function () {
+        try {
+          if (localStorage.getItem('ff-tms-theme') === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark')
+          }
+        } catch (e) {}
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

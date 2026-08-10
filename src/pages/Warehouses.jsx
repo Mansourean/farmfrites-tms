@@ -34,7 +34,7 @@ export function Warehouses() {
         </div>
         <Link
           to="/warehouse/scan"
-          className="flex shrink-0 items-center gap-1.5 rounded-md bg-text-primary px-3 py-1.5 text-[13px] font-medium text-white hover:bg-[#333331]"
+          className="flex shrink-0 items-center gap-1.5 rounded-md bg-[var(--color-ink)] px-3 py-1.5 text-[13px] font-medium text-[var(--color-ink-text)] hover:bg-[var(--color-ink-hover)]"
         >
           <Icon name="camera" className="h-3.5 w-3.5" />
           Open Scanner

@@ -3,9 +3,9 @@ import { Icon } from './Icon'
 import { cn } from '../../utils/cn'
 
 const typeStyles = {
-  info: { icon: 'bell', color: '#4F7CFF', bg: '#EAF0FF' },
-  success: { icon: 'check', color: '#0F6B32', bg: '#DAF3E3' },
-  error: { icon: 'x', color: '#B42318', bg: '#FBE7E5' },
+  info: { icon: 'bell', bg: 'var(--color-info-bg)', color: 'var(--color-info-text)' },
+  success: { icon: 'check', bg: 'var(--color-success-strong-bg)', color: 'var(--color-success-strong-text)' },
+  error: { icon: 'x', bg: 'var(--color-danger-bg)', color: 'var(--color-danger-text)' },
 }
 
 export function ToastContainer() {
@@ -21,7 +21,7 @@ export function ToastContainer() {
           <div
             key={toast.id}
             className={cn(
-              'pointer-events-auto flex items-start gap-2.5 rounded-xl border border-border-strong bg-white px-3.5 py-3 shadow-[0_12px_32px_rgba(0,0,0,0.12)]',
+              'pointer-events-auto flex items-start gap-2.5 rounded-xl border border-border-strong bg-surface px-3.5 py-3 shadow-[0_12px_32px_rgba(0,0,0,0.12)]',
               'animate-[toast-in_180ms_ease-out]',
             )}
           >

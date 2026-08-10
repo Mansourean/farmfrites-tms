@@ -33,16 +33,16 @@ export function FilterBar({ filters, onFilterChange, onExport }) {
   const set = (key) => (value) => onFilterChange({ ...filters, [key]: value })
 
   return (
-    <div className="flex min-h-toolbar shrink-0 flex-wrap items-center gap-x-5 gap-y-1.5 border-b border-border px-4 py-2">
-      <div className="flex flex-wrap items-center gap-1">
-        <div className="relative mr-1 w-full sm:w-64">
+    <div className="flex min-h-toolbar shrink-0 flex-wrap items-center gap-x-5 gap-y-2 border-b border-border px-4 py-2.5">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <div className="relative mr-2 w-full sm:w-64">
           <Icon name="search" className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-muted" />
           <input
             type="text"
             value={filters.search}
             onChange={(e) => set('search')(e.target.value)}
             placeholder="Search Sales No, Client, Driver, Plate..."
-            className="w-full rounded-md border border-border-strong bg-surface-alt py-1 pl-7 pr-2 text-[13px] text-text-primary outline-none placeholder:text-text-faint focus:border-brand-400 focus:bg-white"
+            className="w-full rounded-md border border-border-strong bg-surface-alt py-1 pl-7 pr-2 text-[13px] text-text-primary outline-none placeholder:text-text-faint focus:border-brand-400 focus:bg-surface"
           />
         </div>
 

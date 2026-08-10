@@ -72,11 +72,11 @@ export function TransportationLog() {
   if (error) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3">
-        <p className="text-[13px] text-[#B42318]">Could not load trips: {error}</p>
+        <p className="text-[13px] text-[var(--color-danger-text)]">Could not load trips: {error}</p>
         <button
           type="button"
           onClick={reload}
-          className="rounded-md bg-text-primary px-3.5 py-1.5 text-[13px] font-medium text-white hover:bg-[#333331]"
+          className="rounded-md bg-[var(--color-ink)] px-3.5 py-1.5 text-[13px] font-medium text-[var(--color-ink-text)] hover:bg-[var(--color-ink-hover)]"
         >
           Retry
         </button>

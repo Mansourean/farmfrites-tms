@@ -16,9 +16,9 @@ function StatChip({ label, value, color }) {
 
 function RowStatusBadge({ kind }) {
   const config = {
-    valid: { label: 'Valid', color: '#0F6B32', bg: '#DAF3E3' },
-    invalid: { label: 'Invalid', color: '#B42318', bg: '#FBE7E5' },
-    duplicate: { label: 'Duplicate', color: '#8A4B00', bg: '#FBE7C2' },
+    valid: { label: 'Valid', color: 'var(--color-success-strong-text)', bg: 'var(--color-success-strong-bg)' },
+    invalid: { label: 'Invalid', color: 'var(--color-danger-text)', bg: 'var(--color-danger-bg)' },
+    duplicate: { label: 'Duplicate', color: 'var(--color-warning-text)', bg: 'var(--color-warning-bg)' },
   }[kind]
   return (
     <span
@@ -100,10 +100,10 @@ export function ExcelImportDialog({ stage, fileName, result, summary, progress, 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/30" onClick={dismissible ?? undefined} />
-      <div className="relative flex max-h-[85vh] w-full max-w-[640px] flex-col rounded-xl bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+      <div className="relative flex max-h-[85vh] w-full max-w-[640px] flex-col rounded-xl bg-surface shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <div className="flex items-center gap-2.5">
-            <span className="grid h-8 w-8 place-items-center rounded-full bg-[#EAF0FF] text-[#4F7CFF]">
+            <span className="grid h-8 w-8 place-items-center rounded-full bg-[var(--color-info-bg)] text-[var(--color-info-text)]">
               <Icon name={meta.icon} className="h-4 w-4" />
             </span>
             <div>
@@ -123,9 +123,9 @@ export function ExcelImportDialog({ stage, fileName, result, summary, progress, 
             <div className="flex flex-col gap-4">
               <div className="flex flex-wrap gap-2">
                 <StatChip label="Total Rows" value={result.totalRows} />
-                <StatChip label="Valid" value={result.validRows.length} color="#0F6B32" />
-                <StatChip label="Duplicates" value={result.duplicateRows.length} color="#8A4B00" />
-                <StatChip label="Invalid" value={result.invalidRows.length} color="#B42318" />
+                <StatChip label="Valid" value={result.validRows.length} color="var(--color-success-strong-text)" />
+                <StatChip label="Duplicates" value={result.duplicateRows.length} color="var(--color-warning-text)" />
+                <StatChip label="Invalid" value={result.invalidRows.length} color="var(--color-danger-text)" />
               </div>
               {result.skippedEmpty > 0 && (
                 <p className="text-[12.5px] text-text-muted">
@@ -155,10 +155,10 @@ export function ExcelImportDialog({ stage, fileName, result, summary, progress, 
 
           {stage === 'success' && summary && (
             <div className="grid grid-cols-2 gap-3">
-              <StatChip label="Imported" value={summary.imported} color="#0F6B32" />
+              <StatChip label="Imported" value={summary.imported} color="var(--color-success-strong-text)" />
               <StatChip label="Skipped (empty)" value={summary.skippedEmpty} />
-              <StatChip label="Duplicates" value={summary.duplicates} color="#8A4B00" />
-              <StatChip label="Errors" value={summary.errors} color="#B42318" />
+              <StatChip label="Duplicates" value={summary.duplicates} color="var(--color-warning-text)" />
+              <StatChip label="Errors" value={summary.errors} color="var(--color-danger-text)" />
             </div>
           )}
         </div>
@@ -177,7 +177,7 @@ export function ExcelImportDialog({ stage, fileName, result, summary, progress, 
                 type="button"
                 onClick={onConfirm}
                 disabled={result.validRows.length === 0}
-                className="flex items-center gap-1.5 rounded-md bg-text-primary px-3.5 py-1.5 text-[13px] font-medium text-white hover:bg-[#333331] disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex items-center gap-1.5 rounded-md bg-[var(--color-ink)] px-3.5 py-1.5 text-[13px] font-medium text-[var(--color-ink-text)] hover:bg-[var(--color-ink-hover)] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Icon name="download" className="h-3.5 w-3.5" />
                 Import {result.validRows.length} Trip{result.validRows.length === 1 ? '' : 's'}
@@ -188,7 +188,7 @@ export function ExcelImportDialog({ stage, fileName, result, summary, progress, 
             <button
               type="button"
               onClick={onClose}
-              className="rounded-md bg-text-primary px-3.5 py-1.5 text-[13px] font-medium text-white hover:bg-[#333331]"
+              className="rounded-md bg-[var(--color-ink)] px-3.5 py-1.5 text-[13px] font-medium text-[var(--color-ink-text)] hover:bg-[var(--color-ink-hover)]"
             >
               Done
             </button>

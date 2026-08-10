@@ -57,7 +57,7 @@ export function Destinations() {
               placeholder="Not set"
               disabled={savingId === destination.id}
               onBlur={(e) => handleChange(destination, e.target.value)}
-              className="w-28 shrink-0 rounded-md border border-border-strong bg-white px-2.5 py-1.5 text-[13px] text-text-primary outline-none focus:border-brand-400 disabled:opacity-60"
+              className="w-28 shrink-0 rounded-md border border-border-strong bg-surface px-2.5 py-1.5 text-[13px] text-text-primary outline-none focus:border-brand-400 disabled:opacity-60"
             />
           </div>
         ))}

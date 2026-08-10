@@ -5,7 +5,7 @@ import { Icon } from '../components/ui/Icon'
 import { formatDate } from '../utils/format'
 
 const inputClass =
-  'w-full rounded-lg border border-border-strong bg-white px-3 py-2.5 text-[14px] text-text-primary outline-none focus:border-brand-400'
+  'w-full rounded-lg border border-border-strong bg-surface px-3 py-2.5 text-[14px] text-text-primary outline-none focus:border-brand-400'
 
 // Public, unauthenticated page reached from the WhatsApp assignment link. Shows the trip's
 // Sales No/Customer/Destination/Delivery Date & Time/Receiver Mobile as read-only context above
@@ -78,7 +78,7 @@ export function DriverAssignment() {
           )}
         </div>
 
-        <div className="mt-6 w-full rounded-xl border border-border bg-white p-5 shadow-sm">
+        <div className="mt-6 w-full rounded-xl border border-border bg-surface p-5 shadow-sm">
           {status === 'loading' && <p className="py-4 text-center text-[13px] text-text-muted">Loading…</p>}
 
           {status === 'not-found' && (
@@ -97,7 +97,7 @@ export function DriverAssignment() {
 
           {status === 'submitted' && (
             <div className="flex flex-col items-center gap-2 py-4 text-center">
-              <span className="grid h-11 w-11 place-items-center rounded-full bg-[#E1F5EC] text-[#1E9E6A]">
+              <span className="grid h-11 w-11 place-items-center rounded-full bg-[var(--color-success-bg)] text-[var(--color-success-text)]">
                 <Icon name="check" className="h-5 w-5" />
               </span>
               <p className="text-[15px] font-semibold text-text-primary">Thank you.</p>
@@ -125,13 +125,13 @@ export function DriverAssignment() {
                     Loading Date with the Client's requested delivery date is the exact mistake
                     this screen exists to prevent. */}
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-md border border-[#1E9E6A]/30 bg-[#E1F5EC] px-2.5 py-2">
-                    <p className="text-[10.5px] font-semibold uppercase tracking-wide text-[#0F6B32]">Loading Date</p>
-                    <p className="text-[15px] font-semibold text-[#0F6B32]">{formatDate(context.dispatch_date)}</p>
+                  <div className="rounded-md border border-[var(--color-date-loading)]/30 bg-[var(--color-success-bg)] px-2.5 py-2">
+                    <p className="text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-date-loading)]">Loading Date</p>
+                    <p className="text-[15px] font-semibold text-[var(--color-date-loading)]">{formatDate(context.dispatch_date)}</p>
                   </div>
-                  <div className="rounded-md border border-[#4F7CFF]/30 bg-[#EAF0FF] px-2.5 py-2">
-                    <p className="text-[10.5px] font-semibold uppercase tracking-wide text-[#1743C4]">Requested Delivery</p>
-                    <p className="text-[15px] font-semibold text-[#1743C4]">{formatDate(context.delivery_date)}</p>
+                  <div className="rounded-md border border-[var(--color-date-requested)]/30 bg-[var(--color-info-bg)] px-2.5 py-2">
+                    <p className="text-[10.5px] font-semibold uppercase tracking-wide text-[var(--color-date-requested)]">Requested Delivery</p>
+                    <p className="text-[15px] font-semibold text-[var(--color-date-requested)]">{formatDate(context.delivery_date)}</p>
                   </div>
                 </div>
 
@@ -155,7 +155,7 @@ export function DriverAssignment() {
                 <input required className={inputClass} value={form.plateNo} onChange={set('plateNo')} placeholder="e.g. 4521 KTB" />
               </label>
 
-              {error && <p className="rounded-md bg-[#FBE7E5] px-3 py-2 text-[12.5px] font-medium text-[#B42318]">{error}</p>}
+              {error && <p className="rounded-md bg-[var(--color-danger-bg)] px-3 py-2 text-[12.5px] font-medium text-[var(--color-danger-text)]">{error}</p>}
 
               <button
                 type="submit"

@@ -9,7 +9,7 @@ export function OperationalReportModal({ open, onClose }) {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative w-full max-w-[420px] rounded-xl bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+      <div className="relative w-full max-w-[420px] rounded-xl bg-surface shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <p className="text-[14px] font-semibold text-text-primary">Operational Report</p>
           <button type="button" onClick={onClose} className="rounded-md p-1.5 text-text-muted hover:bg-surface-hover">

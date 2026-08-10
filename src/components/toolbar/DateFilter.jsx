@@ -69,7 +69,7 @@ export function DateFilter({ from, to, onChange }) {
             <button
               type="button"
               onClick={close}
-              className="rounded-md bg-text-primary px-2.5 py-1 text-[12.5px] font-medium text-white hover:bg-[#333331]"
+              className="rounded-md bg-[var(--color-ink)] px-2.5 py-1 text-[12.5px] font-medium text-[var(--color-ink-text)] hover:bg-[var(--color-ink-hover)]"
             >
               Done
             </button>

@@ -123,7 +123,7 @@ function AddButton({ onClick, label }) {
 }
 
 const inputClass =
-  'rounded-md border border-border-strong bg-white px-2.5 py-1.5 text-[13px] text-text-primary outline-none focus:border-accent-green-500'
+  'rounded-md border border-border-strong bg-surface px-2.5 py-1.5 text-[13px] text-text-primary outline-none focus:border-accent-green-500'
 
 export function TripPanel() {
   const { open, mode, tripId, tab, close, openView } = useTripPanel()
@@ -342,7 +342,7 @@ export function TripPanel() {
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/20" onClick={close} />
-      <div className="relative flex max-h-[90vh] w-full max-w-[460px] flex-col overflow-hidden rounded-xl bg-white shadow-[0_16px_48px_rgba(0,0,0,0.18)]">
+      <div className="relative flex max-h-[90vh] w-full max-w-[460px] flex-col overflow-hidden rounded-xl bg-surface shadow-[0_16px_48px_rgba(0,0,0,0.18)]">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <div className="min-w-0">
             <p className="truncate text-[15px] font-semibold text-text-primary">{title}</p>
@@ -357,7 +357,7 @@ export function TripPanel() {
               <button
                 type="button"
                 onClick={() => whatsapp.open(trip.id)}
-                className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[12.5px] font-medium text-[#1E9E6A] hover:bg-[#E1F5EC]"
+                className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[12.5px] font-medium text-[var(--color-success-text)] hover:bg-[var(--color-success-bg)]"
               >
                 <Icon name="whatsapp" className="h-3.5 w-3.5" />
                 Send WhatsApp
@@ -553,7 +553,7 @@ export function TripPanel() {
                   form.destination &&
                   !form.dispatchDate &&
                   !destinations.find((d) => d.name === form.destination)?.transitDays && (
-                    <p className="-mt-1.5 text-[12px] text-[#8A5A00]">
+                    <p className="-mt-1.5 text-[12px] text-[var(--color-warning-text)]">
                       Transit time for {form.destination} isn't set yet, so a Loading Date can't be suggested — enter one manually, or set it once in Settings → Destinations.
                     </p>
                   )}
@@ -595,7 +595,7 @@ export function TripPanel() {
                 </Field>
               </div>
 
-              {error && <p className="rounded-md bg-[#FBE7E5] px-3 py-2 text-[12.5px] font-medium text-[#B42318]">{error}</p>}
+              {error && <p className="rounded-md bg-[var(--color-danger-bg)] px-3 py-2 text-[12.5px] font-medium text-[var(--color-danger-text)]">{error}</p>}
             </div>
           ) : trip && tab === 'details' ? (
             <div className="flex flex-col gap-5">
@@ -775,7 +775,7 @@ export function TripPanel() {
               <button
                 type="button"
                 onClick={() => deleteTrip.open(trip.id)}
-                className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-medium text-[#B42318] hover:bg-[#FBE7E5]"
+                className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-medium text-[var(--color-danger-text)] hover:bg-[var(--color-danger-bg)]"
               >
                 <Icon name="trash" className="h-3.5 w-3.5" />
                 Delete

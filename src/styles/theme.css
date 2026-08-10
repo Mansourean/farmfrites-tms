@@ -41,8 +41,97 @@
   --color-accent-green-500: #35b653;
   --color-accent-green-600: #2c9a46;
 
+  /* Soft tinted status/banner pairs (bg + matching text), reused across error/success/warning
+     banners, icon chips, and pills app-wide -- one definition instead of the same literal hex
+     pair repeated in ~25 files. Values here are exactly what those call sites already used, so
+     light mode is visually unchanged; dark-mode equivalents are defined below. */
+  --color-danger-bg: #fbe7e5;
+  --color-danger-text: #b42318;
+  --color-success-bg: #e1f5ec;
+  --color-success-text: #1e9e6a;
+  --color-success-strong-bg: #daf3e3;
+  --color-success-strong-text: #0f6b32;
+  --color-warning-bg: #fcefc7;
+  --color-warning-text: #8a5a00;
+  --color-info-bg: #eaf0ff;
+  --color-info-text: #1743c4;
+
+  /* Requested Delivery Date (blue) / Loading Date (green) -- the same association used on the
+     transporter assignment page's date chips, just as plain text here (see Transportation Log
+     visual pass), not a colored card. */
+  --color-date-requested: #3159c7;
+  --color-date-loading: #1e8449;
+
+  /* "Ink" -- the app's solid dark chrome color (primary buttons, FF badges, the checked
+     Checkbox fill), always paired with --color-ink-text. Deliberately NOT the same as
+     --color-text-primary: that token flips between near-black and near-white across themes
+     (correct for body text), but a solid button built from bg-text-primary + a hardcoded
+     text-white would go white-on-white the moment text-primary flips in dark mode. Ink is its
+     own pair specifically so it can invert *correctly* -- dark chrome on light pages, light
+     chrome on dark pages -- instead of disappearing. */
+  --color-ink: #1a1a19;
+  --color-ink-text: #ffffff;
+  --color-ink-hover: #333331;
+
   --spacing-sidebar: 15.5rem;
   --spacing-sidebar-collapsed: 4.5rem;
   --spacing-topbar: 2.75rem;
   --spacing-toolbar: 2.75rem;
+}
+
+/* Dark mode: redefines the same semantic tokens above (never introduces new ones components
+   don't already use), so every existing bg-surface/text-text-primary/border-border/etc. class
+   in the app picks this up automatically -- no per-component dark: variants needed for the
+   large majority of the UI. Applies whenever <html> carries data-theme="dark" (see
+   ThemeContext.jsx) -- an explicit user choice always wins; there is no prefers-color-scheme
+   fallback since the app defaults to light and the user opts into dark via Settings. Not pure
+   black per the design brief -- a lifted neutral charcoal, with cards/surfaces one step
+   *lighter* than the page canvas (standard dark-UI elevation direction, the reverse of light
+   mode where cards are brighter than the canvas). */
+:root[data-theme='dark'] {
+  /* Mirrors light mode's own ordering (canvas < alt < surface, ascending brightness) instead
+     of picking dark values independently -- surface (cards/modals/table rows) is the
+     *lightest* of the three, same relationship as light mode's white cards sitting above a
+     dimmer canvas, just recalibrated into the dark range. */
+  --color-surface: #22252b;
+  --color-surface-alt: #1a1d22;
+  --color-surface-raised: #2a2e35;
+  --color-surface-hover: #282c33;
+  --color-border: #2e323a;
+  --color-border-strong: #3a3f48;
+
+  --color-text-primary: #edeef0;
+  --color-text-secondary: #b7bac0;
+  --color-text-muted: #8b8f97;
+  --color-text-faint: #63676f;
+
+  --color-surface-canvas: #121417;
+
+  /* Row-selection tint (bg-brand-50/40 in TripsTable) -- the light value (#eef2ff) is a near-
+     white wash that would look like a rendering glitch on a dark row; this keeps the same
+     brand hue, just blended into the dark surface instead of white. */
+  --color-brand-50: color-mix(in srgb, var(--color-brand-500) 20%, var(--color-surface));
+
+  /* Same three soft pairs as above, recomputed against the dark surface -- one color-mix
+     formula per pair instead of hand-picking 8 new hex values, so they automatically match
+     whatever surface tone is chosen above. */
+  --color-danger-bg: color-mix(in srgb, #b42318 24%, var(--color-surface));
+  --color-danger-text: color-mix(in srgb, #b42318 65%, white);
+  --color-success-bg: color-mix(in srgb, #1e9e6a 22%, var(--color-surface));
+  --color-success-text: color-mix(in srgb, #1e9e6a 65%, white);
+  --color-success-strong-bg: color-mix(in srgb, #0f6b32 24%, var(--color-surface));
+  --color-success-strong-text: color-mix(in srgb, #0f6b32 70%, white);
+  --color-warning-bg: color-mix(in srgb, #8a5a00 26%, var(--color-surface));
+  --color-warning-text: color-mix(in srgb, #8a5a00 70%, white);
+  --color-info-bg: color-mix(in srgb, #1743c4 24%, var(--color-surface));
+  --color-info-text: color-mix(in srgb, #1743c4 60%, white);
+
+  --color-date-requested: #85a9ff;
+  --color-date-loading: #6fcf97;
+
+  /* Inverted on purpose -- a light "ink" button reads as the strong, obvious primary action
+     against a dark page, the same role the near-black button plays against a light page. */
+  --color-ink: #e8e9eb;
+  --color-ink-text: #1a1a19;
+  --color-ink-hover: #c9cbd0;
 }

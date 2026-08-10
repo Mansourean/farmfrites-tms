@@ -108,7 +108,7 @@ export function AddMasterDataModal({ open, entityType, onClose, onCreated }) {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/30" onClick={handleClose} />
-      <div className="relative w-full max-w-[380px] rounded-xl bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+      <div className="relative w-full max-w-[380px] rounded-xl bg-surface shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <p className="text-[14px] font-semibold text-text-primary">{config.title}</p>
           <button type="button" onClick={handleClose} className="rounded-md p-1.5 text-text-muted hover:bg-surface-hover">
@@ -125,7 +125,7 @@ export function AddMasterDataModal({ open, entityType, onClose, onCreated }) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder={config.placeholder}
-                className="rounded-md border border-border-strong bg-white px-2.5 py-[7px] text-[13px] text-text-primary outline-none focus:border-accent-green-500"
+                className="rounded-md border border-border-strong bg-surface px-2.5 py-[7px] text-[13px] text-text-primary outline-none focus:border-accent-green-500"
               />
             </label>
 
@@ -138,12 +138,12 @@ export function AddMasterDataModal({ open, entityType, onClose, onCreated }) {
                   value={extra}
                   onChange={(e) => setExtra(e.target.value)}
                   placeholder={config.extraField.placeholder}
-                  className="rounded-md border border-border-strong bg-white px-2.5 py-[7px] text-[13px] text-text-primary outline-none focus:border-accent-green-500"
+                  className="rounded-md border border-border-strong bg-surface px-2.5 py-[7px] text-[13px] text-text-primary outline-none focus:border-accent-green-500"
                 />
               </label>
             )}
 
-            {error && <p className="rounded-md bg-[#FBE7E5] px-3 py-2 text-[12.5px] font-medium text-[#B42318]">{error}</p>}
+            {error && <p className="rounded-md bg-[var(--color-danger-bg)] px-3 py-2 text-[12.5px] font-medium text-[var(--color-danger-text)]">{error}</p>}
           </div>
 
           <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">

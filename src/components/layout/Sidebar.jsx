@@ -46,11 +46,14 @@ function NavItem({ icon, color, label, path, end, onNavigate, collapsed }) {
               style={{ backgroundColor: color }}
             />
           )}
+          {/* Inactive icons stay neutral (no per-item accent) so the active item is the one
+              thing that stands out -- the colored chip only appears once a section is
+              actually selected, not as a permanent rainbow of nav colors. */}
           <span
             className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] transition-colors"
-            style={{ backgroundColor: isActive ? `${color}22` : `${color}12` }}
+            style={isActive ? { backgroundColor: `${color}1f` } : undefined}
           >
-            <Icon name={icon} className="h-4 w-4" style={{ color }} />
+            <Icon name={icon} className="h-4 w-4" style={{ color: isActive ? color : 'var(--color-text-muted)' }} />
           </span>
           {!collapsed && <span className="flex-1 truncate">{label}</span>}
         </>

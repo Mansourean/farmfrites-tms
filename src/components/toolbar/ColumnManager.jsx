@@ -63,7 +63,7 @@ function ColumnRow({ column, onDragStart, onDragOver, onDrop, dragging }) {
               setEditing(false)
             }
           }}
-          className="min-w-0 flex-1 rounded border border-brand-400 bg-white px-1.5 py-0.5 text-[13px] outline-none"
+          className="min-w-0 flex-1 rounded border border-brand-400 bg-surface px-1.5 py-0.5 text-[13px] outline-none"
         />
       ) : (
         <button
@@ -162,7 +162,7 @@ function AddColumnForm({ onAdd, onCancel }) {
         <button type="button" onClick={onCancel} className="rounded-md px-2.5 py-1.5 text-[12.5px] font-medium text-text-secondary hover:bg-surface-hover">
           Cancel
         </button>
-        <button type="submit" className="rounded-md bg-text-primary px-2.5 py-1.5 text-[12.5px] font-medium text-white hover:bg-[#333331]">
+        <button type="submit" className="rounded-md bg-[var(--color-ink)] px-2.5 py-1.5 text-[12.5px] font-medium text-[var(--color-ink-text)] hover:bg-[var(--color-ink-hover)]">
           Add Column
         </button>
       </div>

@@ -63,7 +63,7 @@ export function RowMenu({ tripId }) {
                 close()
               }}
               className={`flex w-full items-center gap-2 px-3 py-[7px] text-left text-[13px] hover:bg-surface-hover ${
-                item.danger ? 'text-[#B42318] hover:bg-[#FBE7E5]' : 'text-text-secondary hover:text-text-primary'
+                item.danger ? 'text-[var(--color-danger-text)] hover:bg-[var(--color-danger-bg)]' : 'text-text-secondary hover:text-text-primary'
               }`}
             >
               <Icon name={item.icon} className={`h-3.5 w-3.5 ${item.danger ? '' : 'text-text-muted'}`} />

@@ -97,10 +97,10 @@ export function WhatsappModal() {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/30" onClick={handleClose} />
-      <div className="relative w-full max-w-[420px] rounded-xl bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+      <div className="relative w-full max-w-[420px] rounded-xl bg-surface shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <div className="flex items-center gap-2">
-            <span className="grid h-8 w-8 place-items-center rounded-full bg-[#E1F5EC] text-[#1E9E6A]">
+            <span className="grid h-8 w-8 place-items-center rounded-full bg-[var(--color-success-bg)] text-[var(--color-success-text)]">
               <Icon name="whatsapp" className="h-4 w-4" />
             </span>
             <div>
@@ -116,17 +116,17 @@ export function WhatsappModal() {
         <div className="px-5 py-5">
           {loading && <p className="text-[13px] text-text-muted">Preparing assignment link…</p>}
 
-          {error && <p className="rounded-md bg-[#FBE7E5] px-3 py-2 text-[12.5px] font-medium text-[#B42318]">{error}</p>}
+          {error && <p className="rounded-md bg-[var(--color-danger-bg)] px-3 py-2 text-[12.5px] font-medium text-[var(--color-danger-text)]">{error}</p>}
 
           {!loading && !error && (
             <>
               {!phoneDigits && (
-                <p className="mb-3 rounded-md bg-[#FCEFC7] px-3 py-2 text-[12.5px] font-medium text-[#8A5A00]">
+                <p className="mb-3 rounded-md bg-[var(--color-warning-bg)] px-3 py-2 text-[12.5px] font-medium text-[var(--color-warning-text)]">
                   No mobile number on file for this transporter — WhatsApp will open without a pre-filled recipient.
                 </p>
               )}
               <p className="mb-2 text-[12px] font-medium uppercase tracking-wide text-text-faint">Message preview</p>
-              <p className="whitespace-pre-line rounded-lg bg-[#E1F5EC] px-3 py-2.5 text-[12.5px] text-[#0F5132]">{message}</p>
+              <p className="whitespace-pre-line rounded-lg bg-[var(--color-success-bg)] px-3 py-2.5 text-[12.5px] text-[#0F5132]">{message}</p>
               <div className="mt-3 flex gap-2">
                 <button
                   type="button"

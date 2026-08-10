@@ -7,7 +7,7 @@ import { Icon } from '../../components/ui/Icon'
 import { getInitials } from '../../utils/initials'
 
 const inputClass =
-  'rounded-md border border-border-strong bg-white px-2.5 py-[7px] text-[13px] text-text-primary outline-none focus:border-brand-400'
+  'rounded-md border border-border-strong bg-surface px-2.5 py-[7px] text-[13px] text-text-primary outline-none focus:border-brand-400'
 
 // Must match the Edge Function's validation (supabase/functions/admin-users/index.ts) exactly.
 const USERNAME_RE = /^[a-z0-9._-]{3,32}$/
@@ -26,7 +26,7 @@ function ModalShell({ title, onClose, children, footer }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative w-full max-w-[420px] rounded-xl bg-white shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+      <div className="relative w-full max-w-[420px] rounded-xl bg-surface shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <p className="text-[14px] font-semibold text-text-primary">{title}</p>
           <button type="button" onClick={onClose} className="rounded-md p-1.5 text-text-muted hover:bg-surface-hover">
@@ -99,7 +99,7 @@ function UserFormModal({ user, isUsernameTaken, onSave, onClose }) {
             type="submit"
             form="user-form"
             disabled={submitting}
-            className="rounded-md bg-text-primary px-3.5 py-1.5 text-[13px] font-medium text-white hover:bg-[#333331] disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-md bg-[var(--color-ink)] px-3.5 py-1.5 text-[13px] font-medium text-[var(--color-ink-text)] hover:bg-[var(--color-ink-hover)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {submitting ? 'Saving…' : isEdit ? 'Save Changes' : 'Create User'}
           </button>
@@ -141,7 +141,7 @@ function UserFormModal({ user, isUsernameTaken, onSave, onClose }) {
             ))}
           </select>
         </Field>
-        {error && <p className="rounded-md bg-[#FBE7E5] px-3 py-2 text-[12.5px] font-medium text-[#B42318]">{error}</p>}
+        {error && <p className="rounded-md bg-[var(--color-danger-bg)] px-3 py-2 text-[12.5px] font-medium text-[var(--color-danger-text)]">{error}</p>}
       </form>
     </ModalShell>
   )
@@ -183,7 +183,7 @@ function ResetPasswordModal({ user, onSave, onClose }) {
             type="submit"
             form="reset-password-form"
             disabled={submitting}
-            className="flex items-center gap-1.5 rounded-md bg-text-primary px-3.5 py-1.5 text-[13px] font-medium text-white hover:bg-[#333331] disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex items-center gap-1.5 rounded-md bg-[var(--color-ink)] px-3.5 py-1.5 text-[13px] font-medium text-[var(--color-ink-text)] hover:bg-[var(--color-ink-hover)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Icon name="key" className="h-3.5 w-3.5" />
             {submitting ? 'Resetting…' : 'Reset Password'}
@@ -201,7 +201,7 @@ function ResetPasswordModal({ user, onSave, onClose }) {
             placeholder="Enter a new password"
           />
         </Field>
-        {error && <p className="rounded-md bg-[#FBE7E5] px-3 py-2 text-[12.5px] font-medium text-[#B42318]">{error}</p>}
+        {error && <p className="rounded-md bg-[var(--color-danger-bg)] px-3 py-2 text-[12.5px] font-medium text-[var(--color-danger-text)]">{error}</p>}
       </form>
     </ModalShell>
   )
@@ -246,25 +246,34 @@ function ConfirmDeleteModal({ user, onConfirm, onClose }) {
         Are you sure you want to permanently delete <span className="font-medium text-text-primary">{user.fullName}</span>{' '}
         (@{user.username})? This cannot be undone.
       </p>
-      {error && <p className="mt-3 rounded-md bg-[#FBE7E5] px-3 py-2 text-[12.5px] font-medium text-[#B42318]">{error}</p>}
+      {error && <p className="mt-3 rounded-md bg-[var(--color-danger-bg)] px-3 py-2 text-[12.5px] font-medium text-[var(--color-danger-text)]">{error}</p>}
     </ModalShell>
   )
 }
 
-const roleBadgeColors = {
-  admin: { bg: '#EDE7FE', color: '#7C5CFC' },
-  dispatcher: { bg: '#DDEBFF', color: '#3B82F6' },
-  warehouse: { bg: '#DAF3E3', color: '#0F6B32' },
-  viewer: { bg: '#E4E4E1', color: '#6F6F6D' },
+// bg/text are computed rather than two hand-picked hex values each -- mixing the same accent
+// hue against the current theme's surface/text-primary tokens means these badges adapt to
+// dark mode automatically (pale tint on light surface, muted tint on dark surface; darkened
+// accent as light-mode text, lightened accent as dark-mode text) without a second, hand-tuned
+// dark palette to maintain.
+const ROLE_ACCENTS = {
+  admin: '#7C5CFC',
+  dispatcher: '#3B82F6',
+  warehouse: '#0F6B32',
+  viewer: '#6F6F6D',
+}
+
+function softBadgeStyle(accent) {
+  return {
+    backgroundColor: `color-mix(in srgb, ${accent} 14%, var(--color-surface))`,
+    color: `color-mix(in srgb, ${accent} 55%, var(--color-text-primary))`,
+  }
 }
 
 function RoleBadge({ role }) {
-  const config = roleBadgeColors[role] ?? roleBadgeColors.viewer
+  const accent = ROLE_ACCENTS[role] ?? ROLE_ACCENTS.viewer
   return (
-    <span
-      className="inline-flex items-center rounded-full px-2 py-[2px] text-[11px] font-semibold"
-      style={{ backgroundColor: config.bg, color: config.color }}
-    >
+    <span className="inline-flex items-center rounded-full px-2 py-[2px] text-[11px] font-semibold" style={softBadgeStyle(accent)}>
       {ROLE_LABELS[role] ?? role}
     </span>
   )
@@ -272,12 +281,10 @@ function RoleBadge({ role }) {
 
 function StatusBadge({ status }) {
   const active = status === 'active'
+  const accent = active ? '#0F6B32' : '#B42318'
   return (
-    <span
-      className="inline-flex items-center gap-1 rounded-full px-2 py-[2px] text-[11px] font-semibold"
-      style={{ backgroundColor: active ? '#DAF3E3' : '#FBE7E5', color: active ? '#0F6B32' : '#B42318' }}
-    >
-      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: active ? '#0F6B32' : '#B42318' }} />
+    <span className="inline-flex items-center gap-1 rounded-full px-2 py-[2px] text-[11px] font-semibold" style={softBadgeStyle(accent)}>
+      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: accent }} />
       {active ? 'Active' : 'Disabled'}
     </span>
   )
@@ -305,7 +312,7 @@ export function UserManagement({ currentUserId }) {
         <button
           type="button"
           onClick={() => setModal({ type: 'create' })}
-          className="flex items-center gap-1.5 rounded-md bg-text-primary px-3 py-1.5 text-[13px] font-medium text-white hover:bg-[#333331]"
+          className="flex items-center gap-1.5 rounded-md bg-[var(--color-ink)] px-3 py-1.5 text-[13px] font-medium text-[var(--color-ink-text)] hover:bg-[var(--color-ink-hover)]"
         >
           <Icon name="plus" className="h-3.5 w-3.5" />
           Create User
