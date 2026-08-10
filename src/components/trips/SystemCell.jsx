@@ -76,6 +76,56 @@ function DeliveryDateCell({ trip }) {
   )
 }
 
+// Click-to-edit, same interaction as DeliveryDateCell above: a transporter is no longer
+// pre-selected at trip creation (per approved decision -- it's chosen once the customer's
+// delivery date is confirmed, not before), so this is the fast way to assign/reassign one
+// without opening the trip panel.
+function TransporterCell({ trip }) {
+  const { transporters, updateTrip } = useTrips()
+  const [editing, setEditing] = useState(false)
+  const selectRef = useRef(null)
+
+  useEffect(() => {
+    if (editing) selectRef.current?.focus()
+  }, [editing])
+
+  if (editing) {
+    return (
+      <select
+        ref={selectRef}
+        defaultValue={trip.transporterId || ''}
+        onClick={(e) => e.stopPropagation()}
+        onBlur={() => setEditing(false)}
+        onChange={(e) => {
+          setEditing(false)
+          updateTrip(trip.id, { transporterId: e.target.value })
+        }}
+        className="w-full rounded border border-border-strong bg-white px-1.5 py-1 text-[12.5px] text-text-primary outline-none focus:border-accent-green-500"
+      >
+        <option value="">Not assigned yet</option>
+        {transporters.map((t) => (
+          <option key={t.id} value={t.id}>
+            {t.name}
+          </option>
+        ))}
+      </select>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation()
+        setEditing(true)
+      }}
+      className="flex w-full items-center text-left"
+    >
+      <span className="truncate text-text-secondary">{transporterName(trip)}</span>
+    </button>
+  )
+}
+
 export function SystemCell({ columnId, trip }) {
   switch (columnId) {
     case 'salesNo':
@@ -97,7 +147,7 @@ export function SystemCell({ columnId, trip }) {
       return <span className="truncate text-text-secondary">{trip.destination}</span>
 
     case 'transporter':
-      return <span className="truncate text-text-secondary">{transporterName(trip)}</span>
+      return <TransporterCell trip={trip} />
 
     case 'driver':
       return trip.driver ? (

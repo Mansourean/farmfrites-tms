@@ -32,11 +32,15 @@ function singleActiveWarehouseId(warehouses) {
 
 // customers/warehouses/transporters now come from live Supabase data (see TripsContext),
 // so these take the current lists as arguments instead of closing over a static import.
-function emptyForm({ customers, warehouses, transporters }) {
+function emptyForm({ warehouses }) {
   return {
     salesNo: '',
     tripType: 'customer',
-    customerId: customers[0]?.id ?? '',
+    // Deliberately NOT customers[0]?.id -- silently pre-selecting the first customer/
+    // transporter in the list meant a coordinator who didn't consciously pick one could save a
+    // trip against the wrong record without noticing. Starts unselected; the dropdown shows an
+    // explicit "Select..." placeholder (see below) until a real choice is made.
+    customerId: '',
     // Pilot scope: goods physically originate from the Sudair factory for every trip, not from
     // any warehouse record. Confirmed source_warehouse_id is nullable in production, so this is
     // left null (never shown, never asked of the user, never auto-filled) rather than borrowing
@@ -46,7 +50,11 @@ function emptyForm({ customers, warehouses, transporters }) {
     destinationWarehouseId: singleActiveWarehouseId(warehouses),
     destination: '',
     deliveryContactMobile: '',
-    transporterId: transporters[0]?.id ?? '',
+    // Also deliberately unselected -- per approved workflow, the transporter is chosen later
+    // (once the customer's delivery date is confirmed and the trip reaches Transportation
+    // Assignment), not forced at creation. Assignable inline from the Transportation Log table
+    // (see SystemCell.jsx's TransporterCell) or from this panel at any later point.
+    transporterId: '',
     driverName: '',
     driverPhone: '',
     plateNo: '',
@@ -57,7 +65,7 @@ function emptyForm({ customers, warehouses, transporters }) {
   }
 }
 
-function formFromTrip(trip, { customers, warehouses }) {
+function formFromTrip(trip, { warehouses }) {
   // destinationWarehouseId has no DB column (destination only stores the resolved warehouse
   // name as text -- see tripsMapping.js), so on edit it's re-derived by matching that name
   // back against the live warehouse list, not read from trip.destinationWarehouseId (always
@@ -68,7 +76,7 @@ function formFromTrip(trip, { customers, warehouses }) {
   return {
     salesNo: trip.salesNo,
     tripType: trip.tripType,
-    customerId: trip.customerId ?? customers[0]?.id ?? '',
+    customerId: trip.customerId ?? '',
     sourceWarehouseId: trip.sourceWarehouseId,
     destinationWarehouseId: matchedDestinationWarehouse?.id ?? warehouses[1]?.id ?? warehouses[0]?.id ?? '',
     destination: trip.destination,
@@ -251,6 +259,10 @@ export function TripPanel() {
       setError('Destination Warehouse is required.')
       return
     }
+    if (form.tripType === 'customer' && !form.customerId) {
+      setError('Client is required.')
+      return
+    }
 
     const destination =
       form.tripType === 'internal'
@@ -400,6 +412,11 @@ export function TripPanel() {
                       )}
                     >
                       <select className={inputClass} value={form.customerId} onChange={set('customerId')}>
+                        {!form.customerId && (
+                          <option value="" disabled>
+                            Select customer…
+                          </option>
+                        )}
                         {customers.map((c) => (
                           <option key={c.id} value={c.id}>
                             {c.name}
@@ -474,6 +491,7 @@ export function TripPanel() {
                 )}
               >
                 <select className={inputClass} value={form.transporterId} onChange={set('transporterId')}>
+                  <option value="">Not assigned yet</option>
                   {transporters.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.name}
