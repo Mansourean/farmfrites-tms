@@ -4,7 +4,7 @@ import { Icon } from '../ui/Icon'
 import { TripStatusPill } from './TripStatusPill'
 import { useTrips } from '../../context/TripsContext'
 import { originLabel, transporterName } from '../../data/lookup'
-import { autoReadyStatus } from '../../lib/tripsMapping'
+import { autoReadyStatus, suggestedDispatchDate } from '../../lib/tripsMapping'
 import { formatDate } from '../../utils/format'
 import { getInitials } from '../../utils/initials'
 
@@ -28,10 +28,12 @@ function NeedsDateBadge() {
 
 // Click-to-edit: the "Needs Date" badge (and an already-filled date) both open a native date
 // picker right in the cell -- no need to open the trip panel just to set this one field. Picking
-// a date saves immediately and applies the same New-Order -> Transportation-Assignment
-// auto-promotion rule TripPanel's own Requested Delivery Date field uses (see autoReadyStatus).
+// a date saves immediately, applies the same New-Order -> Transportation-Assignment
+// auto-promotion rule TripPanel's own Requested Delivery Date field uses (see autoReadyStatus),
+// and -- same as that field -- suggests a Loading Date when the trip doesn't have one yet and
+// the destination has known Transit Days (see suggestedDispatchDate).
 function DeliveryDateCell({ trip }) {
-  const { updateTrip } = useTrips()
+  const { updateTrip, destinations } = useTrips()
   const [editing, setEditing] = useState(false)
   const inputRef = useRef(null)
 
@@ -53,7 +55,14 @@ function DeliveryDateCell({ trip }) {
           setEditing(false)
           if (!value) return
           const status = autoReadyStatus(trip.tripType, trip.status, value)
-          updateTrip(trip.id, { deliveryDate: value, ...(status ? { status } : {}) })
+          const dispatchDate = trip.dispatchDate
+            ? null
+            : suggestedDispatchDate(destinations, trip.destination, value)
+          updateTrip(trip.id, {
+            deliveryDate: value,
+            ...(status ? { status } : {}),
+            ...(dispatchDate ? { dispatchDate } : {}),
+          })
         }}
         className="w-full rounded border border-border-strong bg-white px-1.5 py-1 text-[12.5px] text-text-primary outline-none focus:border-accent-green-500"
       />

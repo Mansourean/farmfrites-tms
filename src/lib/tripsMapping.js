@@ -78,6 +78,21 @@ export function autoReadyStatus(tripType, currentStatus, deliveryDate) {
     : null
 }
 
+// Centralizes the "suggested Loading Date" calculation (see 0017's destinations.transit_days)
+// so every place a Requested Delivery Date can be set -- TripPanel's form and the
+// Transportation Log table's inline date cell -- computes the same suggestion identically.
+// Returns null when there's nothing to suggest (no date, unknown destination, or the
+// destination has no Transit Days on file yet) -- callers are expected to only apply the
+// result when the trip doesn't already have a Loading Date set, never overwriting one.
+export function suggestedDispatchDate(destinations, destinationName, deliveryDate) {
+  if (!deliveryDate) return null
+  const destination = destinations.find((d) => d.name === destinationName)
+  if (!destination?.transitDays) return null
+  const suggested = new Date(`${deliveryDate}T00:00:00Z`)
+  suggested.setUTCDate(suggested.getUTCDate() - destination.transitDays)
+  return suggested.toISOString().slice(0, 10)
+}
+
 // trips.dispatch_date / delivery_date are timestamptz; the UI only ever collects/shows a
 // plain date (<input type="date">), so time-of-day is fixed at midnight UTC both ways.
 export function dateToDb(dateStr) {

@@ -6,7 +6,7 @@ import { useDeleteTrip } from '../../context/DeleteTripContext'
 import { useAuth } from '../../context/AuthContext'
 import { canEdit, canManageMasterData } from '../../data/roles'
 import { fetchTripEvents } from '../../services/tripEvents'
-import { tripEventToTimelineItem, autoReadyStatus } from '../../lib/tripsMapping'
+import { tripEventToTimelineItem, autoReadyStatus, suggestedDispatchDate } from '../../lib/tripsMapping'
 import { Icon } from '../ui/Icon'
 import { Avatar } from '../ui/Avatar'
 import { TripStatusPill } from './TripStatusPill'
@@ -179,11 +179,9 @@ export function TripPanel() {
   // that field for no benefit.
   useEffect(() => {
     if (!open || form.tripType !== 'customer' || form.dispatchDate || !form.deliveryDate) return
-    const destination = destinations.find((d) => d.name === form.destination)
-    if (!destination?.transitDays) return
-    const suggested = new Date(`${form.deliveryDate}T00:00:00Z`)
-    suggested.setUTCDate(suggested.getUTCDate() - destination.transitDays)
-    setForm((f) => (f.dispatchDate ? f : { ...f, dispatchDate: suggested.toISOString().slice(0, 10) }))
+    const suggested = suggestedDispatchDate(destinations, form.destination, form.deliveryDate)
+    if (!suggested) return
+    setForm((f) => (f.dispatchDate ? f : { ...f, dispatchDate: suggested }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, form.tripType, form.destination, form.deliveryDate, destinations])
 
