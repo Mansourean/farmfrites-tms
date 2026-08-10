@@ -13,7 +13,7 @@ export const DEFAULT_COLUMNS = [
   { id: 'transporter', label: 'Transporter', icon: 'truck', width: 168, system: true, visible: true },
   { id: 'driver', label: 'Driver', icon: 'userCircle', width: 168, system: true, visible: true },
   { id: 'plateNo', label: 'Plate No', icon: 'link', width: 104, system: true, visible: true },
-  { id: 'dispatchDate', label: 'Dispatch Date', icon: 'calendar', width: 116, system: true, visible: true },
+  { id: 'dispatchDate', label: 'Loading Date', icon: 'calendar', width: 116, system: true, visible: true },
   { id: 'deliveryDate', label: 'Requested Delivery Date', icon: 'calendar', width: 168, system: true, visible: true },
   { id: 'status', label: 'Status', icon: 'flag', width: 122, system: true, visible: true },
   { id: 'remarks', label: 'Remarks', icon: 'fileText', width: 200, system: true, visible: true },

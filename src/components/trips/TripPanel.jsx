@@ -500,7 +500,7 @@ export function TripPanel() {
                 </select>
               </Field>
 
-              <Field label="Dispatch Date">
+              <Field label="Loading Date">
                 <input type="date" className={inputClass} value={form.dispatchDate} onChange={set('dispatchDate')} />
               </Field>
 
@@ -573,7 +573,7 @@ export function TripPanel() {
                     </p>
                   </div>
                   <div className="col-span-2">
-                    <p className="text-text-muted">Dispatch → Delivery</p>
+                    <p className="text-text-muted">Loading → Delivery</p>
                     <p className="font-medium text-text-primary">
                       {formatDate(trip.dispatchDate)} → {formatDate(trip.deliveryDate)}
                     </p>
