@@ -22,7 +22,8 @@ export async function fetchMasterData() {
     // city is read so the Destination Warehouse dropdown can disambiguate same-named
     // warehouses across cities (e.g. "Warehouse A -- Jeddah" vs "Warehouse A -- Riyadh").
     fetchList('warehouses', 'warehouse_code', 'warehouse_name', ', isActive:is_active, city'),
-    fetchList('destinations', 'destination_code', 'destination_name'),
+    // transitDays powers the New Trip Dispatch Date suggestion (see TripPanel.jsx / 0017).
+    fetchList('destinations', 'destination_code', 'destination_name', ', transitDays:transit_days'),
   ])
   return { customers, transporters, warehouses, destinations }
 }

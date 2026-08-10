@@ -17,10 +17,10 @@ export const ROLE_LABELS = {
 // Single source of truth for page access — both the sidebar and RoleGuard read from this,
 // so permissions can never drift between "what's shown" and "what's actually reachable".
 export const ROLE_PAGE_ACCESS = {
-  [ROLES.ADMIN]: ['/', '/customers', '/transporters', '/warehouses', '/documents', '/settings'],
-  [ROLES.DISPATCHER]: ['/', '/customers', '/transporters'],
+  [ROLES.ADMIN]: ['/', '/dashboard', '/customers', '/transporters', '/warehouses', '/documents', '/settings'],
+  [ROLES.DISPATCHER]: ['/', '/dashboard', '/customers', '/transporters'],
   [ROLES.WAREHOUSE]: ['/warehouses'],
-  [ROLES.VIEWER]: ['/', '/customers', '/transporters', '/warehouses', '/documents'],
+  [ROLES.VIEWER]: ['/', '/dashboard', '/customers', '/transporters', '/warehouses', '/documents'],
 }
 
 export function canAccessPath(role, path) {

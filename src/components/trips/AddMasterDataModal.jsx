@@ -23,6 +23,15 @@ const ENTITY_CONFIG = {
     title: 'Add Destination',
     label: 'Destination Name',
     placeholder: 'e.g. Panda DC, Jeddah Industrial Area',
+    // Optional (see 0017) -- powers the New Trip Dispatch Date suggestion once known, but a
+    // destination can always be created without it and filled in later.
+    extraField: {
+      key: 'transitDays',
+      label: 'Transit Days (optional)',
+      placeholder: 'e.g. 2',
+      type: 'number',
+      required: false,
+    },
     create: createDestination,
   },
 }
@@ -61,10 +70,19 @@ export function AddMasterDataModal({ open, entityType, onClose, onCreated }) {
     if (config.extraField) {
       const trimmedExtra = extra.trim()
       if (!trimmedExtra) {
-        setError(`${config.extraField.label} is required.`)
-        return
-      }
-      if (config.extraField.normalize) {
+        if (config.extraField.required !== false) {
+          setError(`${config.extraField.label} is required.`)
+          return
+        }
+        extraValue = null
+      } else if (config.extraField.type === 'number') {
+        const parsed = Number(trimmedExtra)
+        if (!Number.isFinite(parsed) || parsed < 0) {
+          setError(`Enter a valid number for ${config.extraField.label}.`)
+          return
+        }
+        extraValue = parsed
+      } else if (config.extraField.normalize) {
         extraValue = config.extraField.normalize(trimmedExtra)
         if (!extraValue) {
           setError(config.extraField.invalidMessage ?? `Enter a valid ${config.extraField.label}.`)
@@ -115,6 +133,8 @@ export function AddMasterDataModal({ open, entityType, onClose, onCreated }) {
               <label className="flex flex-col gap-1.5">
                 <span className="text-[11px] font-medium uppercase tracking-wide text-text-faint">{config.extraField.label}</span>
                 <input
+                  type={config.extraField.type === 'number' ? 'number' : 'text'}
+                  min={config.extraField.type === 'number' ? 0 : undefined}
                   value={extra}
                   onChange={(e) => setExtra(e.target.value)}
                   placeholder={config.extraField.placeholder}

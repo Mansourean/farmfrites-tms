@@ -12,7 +12,6 @@ const defaultFilters = {
   status: 'all',
   tripType: 'all',
   transporterId: 'all',
-  warehouseId: 'all',
   dateFrom: null,
   dateTo: null,
 }
@@ -41,12 +40,6 @@ export function TransportationLog() {
       if (filters.status !== 'all' && trip.status !== filters.status) return false
       if (filters.tripType !== 'all' && trip.tripType !== filters.tripType) return false
       if (filters.transporterId !== 'all' && trip.transporterId !== filters.transporterId) return false
-      if (
-        filters.warehouseId !== 'all' &&
-        trip.sourceWarehouseId !== filters.warehouseId &&
-        trip.destinationWarehouseId !== filters.warehouseId
-      )
-        return false
       if (filters.dateFrom && trip.dispatchDate < filters.dateFrom) return false
       if (filters.dateTo && trip.dispatchDate > filters.dateTo) return false
       if (q) {

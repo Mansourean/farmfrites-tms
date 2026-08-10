@@ -1,17 +1,14 @@
-import { useRef, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { navGroups } from '../../data/navigation'
-import { useLocalStorage } from '../../hooks/useLocalStorage'
 import { useAuth } from '../../context/AuthContext'
 import { ROLE_PAGE_ACCESS } from '../../data/roles'
 import { cn } from '../../utils/cn'
 import { Icon } from '../ui/Icon'
 
-const MIN_WIDTH = 190
-const MAX_WIDTH = 360
-const COLLAPSE_THRESHOLD = 150
-const COLLAPSED_WIDTH = 72
-const DEFAULT_WIDTH = 248
+// Approved mobile nav cleanup: the desktop sidebar is now permanently narrow/icon-only
+// (no resize, no expand-to-labels) instead of the old drag-to-resize/collapse behavior --
+// the mobile off-canvas drawer below is untouched and still shows full labels.
+const DESKTOP_WIDTH = 72
 
 function SectionLabel({ children, collapsed }) {
   if (collapsed) return <div className="mx-2 mt-4 h-px bg-border" />
@@ -80,52 +77,12 @@ function SidebarContent({ onNavigate, collapsed = false, groups }) {
 }
 
 export function Sidebar({ open = false, onClose }) {
-  const [width, setWidth] = useLocalStorage('ff-tms-sidebar-width', DEFAULT_WIDTH)
-  const [collapsed, setCollapsed] = useLocalStorage('ff-tms-sidebar-collapsed', false)
-  const [dragging, setDragging] = useState(false)
-  const dragState = useRef(null)
   const { currentUser } = useAuth()
 
   const allowedPaths = ROLE_PAGE_ACCESS[currentUser?.role] ?? []
   const visibleGroups = navGroups
     .map((group) => ({ ...group, items: group.items.filter((item) => allowedPaths.includes(item.path)) }))
     .filter((group) => group.items.length > 0)
-
-  const effectiveWidth = collapsed ? COLLAPSED_WIDTH : width
-
-  const onResizeStart = (e) => {
-    e.preventDefault()
-    dragState.current = { startX: e.clientX, startWidth: effectiveWidth, moved: false }
-    setDragging(true)
-
-    const onMove = (moveEvent) => {
-      if (!dragState.current) return
-      const delta = moveEvent.clientX - dragState.current.startX
-      if (Math.abs(delta) > 3) dragState.current.moved = true
-      const proposed = dragState.current.startWidth + delta
-
-      if (proposed <= COLLAPSE_THRESHOLD) {
-        setCollapsed(true)
-      } else {
-        setCollapsed(false)
-        setWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, proposed)))
-      }
-    }
-
-    const onUp = () => {
-      // A near-zero-movement press acts as a click: toggle collapsed state.
-      if (dragState.current && !dragState.current.moved) {
-        setCollapsed((c) => !c)
-      }
-      dragState.current = null
-      setDragging(false)
-      document.removeEventListener('mousemove', onMove)
-      document.removeEventListener('mouseup', onUp)
-    }
-
-    document.addEventListener('mousemove', onMove)
-    document.addEventListener('mouseup', onUp)
-  }
 
   return (
     <>
@@ -144,24 +101,8 @@ export function Sidebar({ open = false, onClose }) {
         </div>
       )}
 
-      <aside
-        className={cn(
-          'relative hidden shrink-0 flex-col bg-surface-alt md:flex',
-          !dragging && 'transition-[width] duration-150 ease-out',
-        )}
-        style={{ width: effectiveWidth }}
-      >
-        <SidebarContent collapsed={collapsed} groups={visibleGroups} />
-        <div
-          onMouseDown={onResizeStart}
-          role="separator"
-          aria-orientation="vertical"
-          title={collapsed ? 'Expand sidebar' : 'Drag to resize · drag left to collapse'}
-          className={cn(
-            'absolute -right-[3px] top-0 z-20 h-full w-[6px] cursor-col-resize select-none',
-            dragging ? 'bg-brand-400/50' : 'hover:bg-brand-400/30',
-          )}
-        />
+      <aside className="hidden shrink-0 flex-col bg-surface-alt md:flex" style={{ width: DESKTOP_WIDTH }}>
+        <SidebarContent collapsed groups={visibleGroups} />
       </aside>
     </>
   )

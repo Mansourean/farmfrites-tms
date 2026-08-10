@@ -4,6 +4,7 @@ import { fetchMasterData } from '../services/masterData'
 import { fetchTripRows, insertTripRow, insertTripRows, updateTripRow, deleteTripRow } from '../services/tripsApi'
 import { markTripLoaded, rejectTripLoad, markTripInTransit } from '../services/tripActions'
 import { dbRowToTrip, tripPatchToDbRow } from '../lib/tripsMapping'
+import { useAuth } from './AuthContext'
 
 const TripsContext = createContext(null)
 
@@ -12,6 +13,7 @@ function nowIso() {
 }
 
 export function TripsProvider({ children }) {
+  const { currentUser, loading: authLoading } = useAuth()
   const [trips, setTrips] = useState([])
   const [masterData, setMasterData] = useState({ customers: [], transporters: [], warehouses: [], destinations: [] })
   const [loading, setLoading] = useState(true)
@@ -78,9 +80,15 @@ export function TripsProvider({ children }) {
     setMasterData(md)
   }, [])
 
+  // Fixes an intermittent "permission denied" race: this effect used to fire on mount
+  // unconditionally, sometimes before supabase-js finished restoring the session/JWT from
+  // storage, so the very first request(s) went out unauthenticated and got rejected by RLS --
+  // randomly for whichever table's request lost the race. Waiting for AuthContext to confirm
+  // a real logged-in user first guarantees the session is attached before any query fires.
   useEffect(() => {
+    if (authLoading || !currentUser) return
     load()
-  }, [load])
+  }, [authLoading, currentUser, load])
 
   const patchTrip = useCallback(
     (id, updater) => {
@@ -161,17 +169,18 @@ export function TripsProvider({ children }) {
     [resolveNames, pulseUpdated, addTimelineEvent],
   )
 
-  // Operational workflow (see 0013): the warehouse scanner now matches trips at the two
-  // statuses a warehouse employee actually acts on -- 'ready_for_transporter' (eligible for
-  // Loaded/Reject) and 'loaded' (eligible for In Transit). Was 'planned'/'in_transit' before
-  // mark_trip_loaded's own eligibility check moved from Planned to Ready for Transporter.
+  // Operational workflow (see 0016): the warehouse scanner matches trips at the two statuses a
+  // warehouse employee actually acts on -- 'waiting_for_loading' (eligible for Loaded/Reject,
+  // i.e. the transporter has already submitted driver/vehicle) and 'loaded' (eligible for In
+  // Transit). Was 'ready_for_transporter' before mark_trip_loaded's eligibility check moved to
+  // Waiting for Loading.
   const findTripByPlate = useCallback(
     (plate) => {
       const normalized = plate.trim().toUpperCase().replace(/\s+/g, '')
       if (!normalized) return null
       return trips.find(
         (trip) =>
-          ['ready_for_transporter', 'loaded'].includes(trip.status) &&
+          ['waiting_for_loading', 'loaded'].includes(trip.status) &&
           trip.plateNo.toUpperCase().replace(/\s+/g, '').includes(normalized),
       )
     },
@@ -186,7 +195,7 @@ export function TripsProvider({ children }) {
       if (!normalized) return null
       return trips.find(
         (trip) =>
-          ['ready_for_transporter', 'loaded'].includes(trip.status) &&
+          ['waiting_for_loading', 'loaded'].includes(trip.status) &&
           trip.salesNo.toUpperCase().includes(normalized),
       )
     },

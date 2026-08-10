@@ -4,8 +4,9 @@ const TRIP_TYPE_LABELS = {
 }
 
 const STATUS_LABELS = {
-  planned: 'Planned',
-  ready_for_transporter: 'Ready for Transporter',
+  planned: 'New Order',
+  ready_for_transporter: 'Transportation Assignment',
+  waiting_for_loading: 'Waiting for Loading',
   waiting_driver: 'Waiting Driver',
   loaded: 'Loaded',
   in_transit: 'In Transit',

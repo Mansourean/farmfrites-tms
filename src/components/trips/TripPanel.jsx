@@ -6,7 +6,7 @@ import { useDeleteTrip } from '../../context/DeleteTripContext'
 import { useAuth } from '../../context/AuthContext'
 import { canEdit, canManageMasterData } from '../../data/roles'
 import { fetchTripEvents } from '../../services/tripEvents'
-import { tripEventToTimelineItem } from '../../lib/tripsMapping'
+import { tripEventToTimelineItem, autoReadyStatus } from '../../lib/tripsMapping'
 import { Icon } from '../ui/Icon'
 import { Avatar } from '../ui/Avatar'
 import { TripStatusPill } from './TripStatusPill'
@@ -161,6 +161,24 @@ export function TripPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, mode, trip])
 
+  // Suggests (never forces) a Dispatch Date once both Destination and Requested Delivery Date
+  // are known, using the selected destination's Transit Days (see 0017) -- only fills the
+  // field when it's currently empty, so it never overwrites a date the coordinator already set
+  // or typed manually. Destinations with no Transit Days on file (most, until filled in) simply
+  // produce no suggestion. Deliberately NOT depending on form.dispatchDate itself -- reading it
+  // inside the effect (both the early-return guard and the functional setForm check) is enough
+  // to avoid overwriting it, and adding it as a dependency would re-run this every keystroke in
+  // that field for no benefit.
+  useEffect(() => {
+    if (!open || form.tripType !== 'customer' || form.dispatchDate || !form.deliveryDate) return
+    const destination = destinations.find((d) => d.name === form.destination)
+    if (!destination?.transitDays) return
+    const suggested = new Date(`${form.deliveryDate}T00:00:00Z`)
+    suggested.setUTCDate(suggested.getUTCDate() - destination.transitDays)
+    setForm((f) => (f.dispatchDate ? f : { ...f, dispatchDate: suggested.toISOString().slice(0, 10) }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, form.tripType, form.destination, form.deliveryDate, destinations])
+
   const handleMasterDataCreated = async (row) => {
     if (!addModal) return
     const { entityType, field } = addModal
@@ -239,11 +257,7 @@ export function TripPanel() {
         ? warehouses.find((w) => w.id === form.destinationWarehouseId)?.name ?? ''
         : form.destination
 
-    // Once a Customer Delivery trip has a Delivery Date, it's ready to be handed to the
-    // transporter. Only fires forward from Planned -- never overrides a status the trip already
-    // moved past Planned, and never applies to Internal Transfer trips.
-    const autoReady = form.tripType === 'customer' && form.status === 'planned' && !!form.deliveryDate
-    const status = autoReady ? 'ready_for_transporter' : form.status
+    const status = autoReadyStatus(form.tripType, form.status, form.deliveryDate) ?? form.status
 
     const payload = {
       salesNo,
@@ -364,7 +378,7 @@ export function TripPanel() {
                       key={option.value}
                       type="button"
                       onClick={() => setForm((f) => ({ ...f, tripType: option.value }))}
-                      className={`flex-1 rounded-[5px] px-2 py-1.5 text-[12.5px] font-medium transition-colors ${
+                      className={`min-w-0 flex-1 rounded-[5px] px-2 py-1.5 text-center text-[12.5px] font-medium transition-colors ${
                         form.tripType === option.value
                           ? 'bg-accent-green-500 text-white'
                           : 'text-text-secondary hover:bg-surface-hover'
@@ -472,7 +486,7 @@ export function TripPanel() {
                 <input type="date" className={inputClass} value={form.dispatchDate} onChange={set('dispatchDate')} />
               </Field>
 
-              <Field label="Delivery Date">
+              <Field label="Requested Delivery Date">
                 <input type="date" className={inputClass} value={form.deliveryDate} onChange={set('deliveryDate')} />
               </Field>
 
@@ -502,8 +516,9 @@ export function TripPanel() {
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Status">
                   <select className={inputClass} value={form.status} onChange={set('status')}>
-                    <option value="planned">Planned</option>
-                    <option value="ready_for_transporter">Ready for Transporter</option>
+                    <option value="planned">New Order</option>
+                    <option value="ready_for_transporter">Transportation Assignment</option>
+                    <option value="waiting_for_loading">Waiting for Loading</option>
                     <option value="waiting_driver">Waiting Driver</option>
                     <option value="loaded">Loaded</option>
                     <option value="in_transit">In Transit</option>

@@ -27,8 +27,10 @@ export async function createWarehouse(name) {
   return data
 }
 
-export async function createDestination(name) {
-  const { data, error } = await supabase.rpc('create_destination', { p_name: name })
+// transit_days is optional (see 0017) -- most destinations won't have a known transit time on
+// day one, so this is normally called name-only.
+export async function createDestination(name, transitDays = null) {
+  const { data, error } = await supabase.rpc('create_destination', { p_name: name, p_transit_days: transitDays })
   if (error) throw new Error(error.message)
   return data
 }

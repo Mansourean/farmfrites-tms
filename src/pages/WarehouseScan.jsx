@@ -12,12 +12,13 @@ function normalizePlateGuess(rawText) {
   return match ? match[0] : cleaned.slice(0, 12)
 }
 
-// Operational workflow (see 0013): the trips a warehouse employee has any reason to act on --
-// eligible for Loaded/Reject ('ready_for_transporter') or In Transit ('loaded'). Newest first,
-// matching the rest of the app's default ordering.
+// Operational workflow (see 0016): the trips a warehouse employee has any reason to act on --
+// eligible for Loaded/Reject ('waiting_for_loading', i.e. the transporter has already
+// submitted driver/vehicle) or In Transit ('loaded'). Newest first, matching the rest of the
+// app's default ordering.
 function upcomingTrips(trips) {
   return trips
-    .filter((t) => t.status === 'ready_for_transporter' || t.status === 'loaded')
+    .filter((t) => t.status === 'waiting_for_loading' || t.status === 'loaded')
     .sort((a, b) => b.createdSeq - a.createdSeq)
 }
 
@@ -382,7 +383,7 @@ export function WarehouseScan() {
                       <span className="block text-[12px] text-white/50">{originLabel(t)} → {t.destination}</span>
                     </span>
                     <span className="text-[11px] font-medium uppercase tracking-wide text-white/40">
-                      {t.status === 'loaded' ? 'Loaded' : 'Ready'}
+                      {t.status === 'loaded' ? 'Loaded' : 'Waiting'}
                     </span>
                   </button>
                 ))

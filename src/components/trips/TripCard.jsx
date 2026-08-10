@@ -20,7 +20,7 @@ export function TripCard({ trip }) {
       onClick={() => openView(trip.id, 'details')}
       style={{ borderLeft: `3px solid ${accentColor}` }}
       className={cn(
-        'flex flex-col gap-2.5 border-b border-border p-4 pl-[13px] transition-colors duration-700 active:bg-surface-hover',
+        'flex flex-col gap-2 border-b border-border p-2.5 pl-[13px] transition-colors duration-700 active:bg-surface-hover',
         isFresh && 'bg-[#E1F5EC]',
       )}
     >
@@ -37,7 +37,7 @@ export function TripCard({ trip }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-x-3 gap-y-2 rounded-lg bg-surface-alt p-2.5 text-[12.5px]">
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 rounded-lg bg-surface-alt p-2 text-[12.5px]">
         <div className="flex items-center gap-1.5 text-text-secondary">
           <Icon name="truck" className="h-3.5 w-3.5 text-text-muted" />
           <span className="truncate">{transporterName(trip)}</span>

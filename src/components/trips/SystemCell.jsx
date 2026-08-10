@@ -1,7 +1,10 @@
+import { useEffect, useRef, useState } from 'react'
 import { Avatar } from '../ui/Avatar'
 import { Icon } from '../ui/Icon'
 import { TripStatusPill } from './TripStatusPill'
+import { useTrips } from '../../context/TripsContext'
 import { originLabel, transporterName } from '../../data/lookup'
+import { autoReadyStatus } from '../../lib/tripsMapping'
 import { formatDate } from '../../utils/format'
 import { getInitials } from '../../utils/initials'
 
@@ -11,6 +14,65 @@ function WaitingDriverBadge() {
       <Icon name="clock" className="h-3 w-3" />
       Waiting Driver
     </span>
+  )
+}
+
+function NeedsDateBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-[#FBE7C2] px-2 py-[2px] text-[11px] font-semibold text-[#8A4B00]">
+      <Icon name="clock" className="h-3 w-3" />
+      Needs Date
+    </span>
+  )
+}
+
+// Click-to-edit: the "Needs Date" badge (and an already-filled date) both open a native date
+// picker right in the cell -- no need to open the trip panel just to set this one field. Picking
+// a date saves immediately and applies the same New-Order -> Transportation-Assignment
+// auto-promotion rule TripPanel's own Requested Delivery Date field uses (see autoReadyStatus).
+function DeliveryDateCell({ trip }) {
+  const { updateTrip } = useTrips()
+  const [editing, setEditing] = useState(false)
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    if (editing) inputRef.current?.showPicker?.()
+  }, [editing])
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        type="date"
+        autoFocus
+        defaultValue={trip.deliveryDate || ''}
+        onClick={(e) => e.stopPropagation()}
+        onBlur={() => setEditing(false)}
+        onChange={(e) => {
+          const value = e.target.value
+          setEditing(false)
+          if (!value) return
+          const status = autoReadyStatus(trip.tripType, trip.status, value)
+          updateTrip(trip.id, { deliveryDate: value, ...(status ? { status } : {}) })
+        }}
+        className="w-full rounded border border-border-strong bg-white px-1.5 py-1 text-[12.5px] text-text-primary outline-none focus:border-accent-green-500"
+      />
+    )
+  }
+
+  const needsDate = !trip.deliveryDate && trip.tripType === 'customer' && trip.status === 'planned'
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation()
+        setEditing(true)
+      }}
+      className="flex w-full items-center text-left"
+    >
+      {needsDate ? <NeedsDateBadge /> : <span className="text-text-secondary">{formatDate(trip.deliveryDate)}</span>}
+    </button>
   )
 }
 
@@ -60,7 +122,7 @@ export function SystemCell({ columnId, trip }) {
       return <span className="text-text-secondary">{formatDate(trip.dispatchDate)}</span>
 
     case 'deliveryDate':
-      return <span className="text-text-secondary">{formatDate(trip.deliveryDate)}</span>
+      return <DeliveryDateCell trip={trip} />
 
     case 'status':
       return <TripStatusPill status={trip.status} />

@@ -43,16 +43,18 @@ export function resolveTripType(text) {
   return 'customer'
 }
 
-// Defaults to "Planned" when the column is blank or unrecognized. Checked in a specific
-// order since some values overlap as substrings (e.g. "driver" isn't in any other status).
+// Defaults to "New Order" (DB value 'Planned') when the column is blank or unrecognized.
+// Checked in a specific order since some values overlap as substrings (e.g. "driver" isn't in
+// any other status, and "waiting for loading" must be checked before the plain "load" check).
 export function resolveStatus(text) {
   const value = String(text ?? '').trim().toLowerCase()
   if (value.includes('reject')) return 'rejected'
   if (value.includes('cancel')) return 'cancelled'
   if (value.includes('deliver')) return 'delivered'
   if (value.includes('transit')) return 'in_transit'
+  if (value.includes('waiting') && value.includes('load')) return 'waiting_for_loading'
   if (value.includes('load')) return 'loaded'
-  if (value.includes('ready')) return 'ready_for_transporter'
+  if (value.includes('assignment') || value.includes('ready')) return 'ready_for_transporter'
   if (value.includes('driver')) return 'waiting_driver'
   return 'planned'
 }

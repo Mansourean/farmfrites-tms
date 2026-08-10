@@ -19,13 +19,20 @@ export const TRIP_TYPE_FROM_DB = {
 // 'rejected' added for Phase 3's reject_trip_load workflow (see 0008_reject_status.sql) --
 // set only via that RPC, not selectable as a source status for any other transition.
 // 'ready_for_transporter' added for the operational workflow (see 0013): the trip becomes
-// this automatically once both Delivery Confirmation checkboxes are set, and is now the
+// this automatically once the customer info confirmation checkbox is set, and is now the
 // eligible source status for mark_trip_loaded/reject_trip_load (was 'Planned'). 'waiting_driver'
 // is kept for backward compatibility with any existing row already at that status -- it is no
 // longer part of the automated flow, but remains selectable and mapped like every other value.
+// 'waiting_for_loading' added (see 0016): the transporter has submitted driver/vehicle, truck
+// is waiting at the factory to be loaded -- this is now the eligible source status for
+// mark_trip_loaded/reject_trip_load (was 'Ready for Transporter'). DB values are unchanged by
+// 0016; only UI labels differ ('Planned' displays as "New Order", 'Ready for Transporter'
+// displays as "Transportation Assignment" -- see TripStatusPill.jsx/FilterBar.jsx/
+// excelExporter.js), so no data migration was needed.
 export const STATUS_TO_DB = {
   planned: 'Planned',
   ready_for_transporter: 'Ready for Transporter',
+  waiting_for_loading: 'Waiting for Loading',
   waiting_driver: 'Waiting Driver',
   loaded: 'Loaded',
   in_transit: 'In Transit',
@@ -36,6 +43,7 @@ export const STATUS_TO_DB = {
 export const STATUS_FROM_DB = {
   Planned: 'planned',
   'Ready for Transporter': 'ready_for_transporter',
+  'Waiting for Loading': 'waiting_for_loading',
   'Waiting Driver': 'waiting_driver',
   Loaded: 'loaded',
   'In Transit': 'in_transit',
@@ -55,6 +63,19 @@ export function statusToDb(value) {
 }
 export function statusFromDb(value) {
   return STATUS_FROM_DB[value] ?? 'planned'
+}
+
+// Centralizes the New Order -> Transportation Assignment auto-promotion rule: once a Customer
+// Delivery trip has a Delivery Date, it's ready to be handed to the transporter -- no separate
+// confirmation checkbox (removed per approved decision: a checkbox is a clearer, more
+// deliberate signal than a still-tentative typed date, but adds an extra required step: not
+// needed once the coordinator is expected to only enter the date after actually confirming it
+// with the customer). Only fires forward from New Order (DB value 'planned'), only for
+// Customer Delivery trips.
+export function autoReadyStatus(tripType, currentStatus, deliveryDate) {
+  return tripType === 'customer' && currentStatus === 'planned' && !!deliveryDate
+    ? 'ready_for_transporter'
+    : null
 }
 
 // trips.dispatch_date / delivery_date are timestamptz; the UI only ever collects/shows a
