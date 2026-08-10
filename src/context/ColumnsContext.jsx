@@ -10,47 +10,19 @@ const MIN_WIDTH = 80
 export function ColumnsProvider({ children }) {
   const [columns, setColumns] = useLocalStorage('ff-tms-columns-transportation-log', DEFAULT_COLUMNS)
 
-  // Reconcile a saved layout against the current DEFAULT_COLUMNS, every time the app loads:
-  //   - append any missing system columns instead of silently dropping them
-  //   - drop any saved *system* column no longer present in DEFAULT_COLUMNS (one that shipped
-  //     briefly and was then removed)
-  //   - strip out any duplicate ids a saved layout may already contain (a prior version of this
-  //     effect computed `missing` from the outer `columns` closure instead of from `prev`, so
-  //     React re-invoking this effect more than once before a re-render -- e.g. StrictMode's
-  //     dev-only double-invoke -- could append the same missing column twice)
-  //   - sync a system column's label/icon to whatever DEFAULT_COLUMNS currently says (system
-  //     column names are a product decision made in code, not a per-user preference -- without
-  //     this, renaming a column in a future release would silently never reach anyone who
-  //     already has a saved layout, requiring them to know to click "Reset"). Width stays
-  //     user-adjustable and is never touched here.
-  // Custom (system: false) columns a user actually created are untouched by any of this.
+  // System columns (order, label, icon, width, visibility) always mirror DEFAULT_COLUMNS on
+  // load -- they're a product decision made in code, not a per-user preference, and earlier
+  // versions of this reconcile only patched in missing columns / synced label+icon, which meant
+  // every reorder, visibility change, or rename shipped in a release silently never reached
+  // anyone who already had a saved layout (repeatedly confirmed in practice -- renames and
+  // reordering kept needing a manual "Reset" to show up). Only genuinely custom (system: false)
+  // columns a user actually created via "+" are preserved from the saved layout, appended after
+  // the system columns in their existing order.
   useEffect(() => {
-    const defaultsById = new Map(DEFAULT_COLUMNS.map((c) => [c.id, c]))
     setColumns((prev) => {
-      let changed = false
-      const seen = new Set()
-      const reconciled = []
-      for (const c of prev) {
-        if (c.system && !defaultsById.has(c.id)) {
-          changed = true
-          continue
-        }
-        if (seen.has(c.id)) {
-          changed = true
-          continue
-        }
-        seen.add(c.id)
-        const def = c.system ? defaultsById.get(c.id) : null
-        if (def && (c.label !== def.label || c.icon !== def.icon)) {
-          reconciled.push({ ...c, label: def.label, icon: def.icon })
-          changed = true
-        } else {
-          reconciled.push(c)
-        }
-      }
-      const missing = DEFAULT_COLUMNS.filter((c) => !seen.has(c.id))
-      if (missing.length > 0) changed = true
-      return changed ? [...reconciled, ...missing] : prev
+      const custom = prev.filter((c) => !c.system)
+      const next = [...DEFAULT_COLUMNS, ...custom]
+      return JSON.stringify(prev) === JSON.stringify(next) ? prev : next
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
