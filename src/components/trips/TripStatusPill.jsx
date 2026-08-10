@@ -1,12 +1,14 @@
 // New Order (DB value 'Planned') is a calm teal-blue -- deliberately a different hue from In
 // Transit's indigo-blue below (not just a lighter/darker version of the same color), so the
 // two stay clearly distinguishable at a glance, alongside Rejected/Delivered/Cancelled's reds
-// and green. Labels below are the approved spec's naming (New Order / Transportation
-// Assignment / Waiting for Loading) -- only display text, DB values are unchanged (see 0016).
+// and green. Labels below are the approved naming (New Order / Transportation Assignment /
+// Ready for Loading) -- only display text, DB values are unchanged (still 'Waiting for
+// Loading' in the database -- see 0016 -- since the DB status string itself was never renamed
+// for any status, only what the UI displays).
 const statusConfig = {
   planned: { label: 'New Order', color: '#0E7490', bg: '#CFFAFE' },
   ready_for_transporter: { label: 'Transportation Assignment', color: '#C2410C', bg: '#FFEDD5' },
-  waiting_for_loading: { label: 'Waiting for Loading', color: '#A16207', bg: '#FEF3C7' },
+  waiting_for_loading: { label: 'Ready for Loading', color: '#A16207', bg: '#FEF3C7' },
   waiting_driver: { label: 'Waiting Driver', color: '#8A5A00', bg: '#FCEFC7' },
   loaded: { label: 'Loaded', color: '#6B3FA0', bg: '#EAE0F8' },
   in_transit: { label: 'In Transit', color: '#1743C4', bg: '#D3E3FC' },

@@ -9,7 +9,7 @@ const statusOptions = [
   { value: 'rejected', label: 'Rejected', dot: '#D92D20' },
   { value: 'planned', label: 'New Order', dot: '#0E7490' },
   { value: 'ready_for_transporter', label: 'Transportation Assignment', dot: '#C2410C' },
-  { value: 'waiting_for_loading', label: 'Waiting for Loading', dot: '#A16207' },
+  { value: 'waiting_for_loading', label: 'Ready for Loading', dot: '#A16207' },
   { value: 'waiting_driver', label: 'Waiting Driver', dot: '#B08900' },
   { value: 'loaded', label: 'Loaded', dot: '#6B3FA0' },
   { value: 'in_transit', label: 'In Transit', dot: '#2F6FE4' },

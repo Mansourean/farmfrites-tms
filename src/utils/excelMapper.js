@@ -45,14 +45,18 @@ export function resolveTripType(text) {
 
 // Defaults to "New Order" (DB value 'Planned') when the column is blank or unrecognized.
 // Checked in a specific order since some values overlap as substrings (e.g. "driver" isn't in
-// any other status, and "waiting for loading" must be checked before the plain "load" check).
+// any other status, and "ready/waiting for loading" must be checked before both the plain
+// "load" check and the plain "ready" check -- "Ready for Loading" contains "ready", so it must
+// resolve here first or it would incorrectly match ready_for_transporter below).
 export function resolveStatus(text) {
   const value = String(text ?? '').trim().toLowerCase()
   if (value.includes('reject')) return 'rejected'
   if (value.includes('cancel')) return 'cancelled'
   if (value.includes('deliver')) return 'delivered'
   if (value.includes('transit')) return 'in_transit'
-  if (value.includes('waiting') && value.includes('load')) return 'waiting_for_loading'
+  // Matches both the current label ("Ready for Loading") and the earlier one ("Waiting for
+  // Loading", still the literal DB value -- see 0016) so previously-exported files still import.
+  if ((value.includes('ready') || value.includes('waiting')) && value.includes('load')) return 'waiting_for_loading'
   if (value.includes('load')) return 'loaded'
   if (value.includes('assignment') || value.includes('ready')) return 'ready_for_transporter'
   if (value.includes('driver')) return 'waiting_driver'

@@ -383,7 +383,7 @@ export function WarehouseScan() {
                       <span className="block text-[12px] text-white/50">{originLabel(t)} → {t.destination}</span>
                     </span>
                     <span className="text-[11px] font-medium uppercase tracking-wide text-white/40">
-                      {t.status === 'loaded' ? 'Loaded' : 'Waiting'}
+                      {t.status === 'loaded' ? 'Loaded' : 'Ready'}
                     </span>
                   </button>
                 ))

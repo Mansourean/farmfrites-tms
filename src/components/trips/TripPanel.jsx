@@ -534,7 +534,7 @@ export function TripPanel() {
                   <select className={inputClass} value={form.status} onChange={set('status')}>
                     <option value="planned">New Order</option>
                     <option value="ready_for_transporter">Transportation Assignment</option>
-                    <option value="waiting_for_loading">Waiting for Loading</option>
+                    <option value="waiting_for_loading">Ready for Loading</option>
                     <option value="waiting_driver">Waiting Driver</option>
                     <option value="loaded">Loaded</option>
                     <option value="in_transit">In Transit</option>
