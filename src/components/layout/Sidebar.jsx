@@ -59,7 +59,7 @@ function SidebarContent({ onNavigate, collapsed = false, groups }) {
     <>
       {collapsed && (
         <div className="flex justify-center pb-1 pt-3">
-          <span className="grid h-8 w-8 place-items-center rounded-[8px] bg-text-primary text-[11px] font-bold text-white">
+          <span className="grid h-8 w-8 place-items-center rounded-[8px] bg-accent-green-500 text-[11px] font-bold text-white">
             FF
           </span>
         </div>
@@ -121,7 +121,7 @@ export function Sidebar({ open = false, onClose }) {
         </div>
       )}
 
-      <aside className="hidden shrink-0 flex-col border-r border-border bg-surface-alt md:flex" style={{ width: DESKTOP_WIDTH }}>
+      <aside className="hidden h-full shrink-0 flex-col border-r border-border bg-surface-alt md:flex" style={{ width: DESKTOP_WIDTH }}>
         <SidebarContent collapsed groups={visibleGroups} />
       </aside>
     </>

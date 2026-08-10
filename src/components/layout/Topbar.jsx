@@ -32,15 +32,11 @@ export function TopBar({ onMenuClick }) {
           <Icon name="menu" className="h-4.5 w-4.5" />
         </button>
 
-        <div className="hidden items-center gap-1.5 rounded-md px-1.5 py-1 md:flex">
-          <span className="grid h-6 w-6 place-items-center rounded-[6px] bg-text-primary text-[11px] font-bold text-white">
-            FF
-          </span>
-          <div className="flex flex-col leading-[1.15]">
-            <span className="text-[13px] font-semibold text-text-primary">Farm Frites</span>
-            <span className="text-[10px] text-text-muted">Transportation Management System</span>
-          </div>
-        </div>
+        <span className="hidden text-[13px] font-medium text-text-secondary md:inline">
+          Transportation Management System
+        </span>
+
+        <div className="mx-1 hidden h-4 w-px bg-border md:block" />
 
         <div className="hidden items-center gap-0.5 text-text-muted md:flex">
           <button type="button" className="rounded-md p-1.5 hover:bg-surface-hover hover:text-text-secondary">
@@ -65,19 +61,7 @@ export function TopBar({ onMenuClick }) {
       </div>
 
       <div className="flex shrink-0 items-center gap-1 md:gap-2">
-        {showCreateActions && (
-          <>
-            <ImportExcelButton />
-            <button
-              type="button"
-              onClick={openCreate}
-              className="flex items-center gap-1.5 rounded-md bg-text-primary px-2.5 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-[#333331] md:px-3"
-            >
-              <Icon name="plus" className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">New Trip</span>
-            </button>
-          </>
-        )}
+        {showCreateActions && <ImportExcelButton />}
         <button
           type="button"
           onClick={() => setReportOpen(true)}
@@ -90,6 +74,16 @@ export function TopBar({ onMenuClick }) {
           <Icon name="moreVertical" className="h-4 w-4" />
         </button>
         <span className="hidden text-[12px] text-text-faint md:inline">⌘K</span>
+        {showCreateActions && (
+          <button
+            type="button"
+            onClick={openCreate}
+            className="flex items-center gap-1.5 rounded-md bg-accent-green-500 px-2.5 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-accent-green-600 md:px-3"
+          >
+            <Icon name="plus" className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">New Trip</span>
+          </button>
+        )}
         <div className="mx-0.5 hidden h-4 w-px bg-border md:block" />
         <UserMenu />
       </div>

@@ -318,9 +318,9 @@ export function TripPanel() {
   const originName = customers.find((c) => c.id === form.customerId)?.name
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end">
+    <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/20" onClick={close} />
-      <div className="relative flex h-full w-full max-w-[460px] flex-col bg-white shadow-[-8px_0_32px_rgba(0,0,0,0.12)]">
+      <div className="relative flex max-h-[90vh] w-full max-w-[460px] flex-col overflow-hidden rounded-xl bg-white shadow-[0_16px_48px_rgba(0,0,0,0.18)]">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <div className="min-w-0">
             <p className="truncate text-[15px] font-semibold text-text-primary">{title}</p>
@@ -401,7 +401,8 @@ export function TripPanel() {
               </Field>
 
               {form.tripType === 'customer' ? (
-                <>
+                <div className="flex flex-col gap-3 rounded-lg border border-border-strong p-3">
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-text-faint">Customer</p>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <Field
                       label="Client"
@@ -448,74 +449,81 @@ export function TripPanel() {
                       </select>
                     </Field>
                   </div>
-                </>
-              ) : (
-                // Pilot scope: origin is operationally understood to be the Sudair factory for
-                // both trip types -- there is no Source Warehouse selection here.
-                <Field
-                  label="Destination Warehouse"
-                  action={canAddMasterData && (
-                    <AddButton
-                      label="Add warehouse"
-                      onClick={() => setAddModal({ entityType: 'warehouse', field: 'destinationWarehouseId' })}
+
+                  <Field label="Receiver Mobile">
+                    <input
+                      className={inputClass}
+                      value={form.deliveryContactMobile}
+                      onChange={set('deliveryContactMobile')}
+                      placeholder="Optional"
                     />
+                  </Field>
+
+                  <Field label="Requested Delivery Date">
+                    <input type="date" className={inputClass} value={form.deliveryDate} onChange={set('deliveryDate')} />
+                  </Field>
+                </div>
+              ) : (
+                <>
+                  {/* Pilot scope: origin is operationally understood to be the Sudair factory for
+                      both trip types -- there is no Source Warehouse selection here. */}
+                  <Field
+                    label="Destination Warehouse"
+                    action={canAddMasterData && (
+                      <AddButton
+                        label="Add warehouse"
+                        onClick={() => setAddModal({ entityType: 'warehouse', field: 'destinationWarehouseId' })}
+                      />
+                    )}
+                  >
+                    <select
+                      className={inputClass}
+                      value={form.destinationWarehouseId}
+                      onChange={set('destinationWarehouseId')}
+                    >
+                      {!form.destinationWarehouseId && (
+                        <option value="" disabled>
+                          Select warehouse…
+                        </option>
+                      )}
+                      {/* "Name -- City" so future same-named warehouses in different cities stay
+                          distinguishable (e.g. "Warehouse A -- Jeddah" vs "Warehouse A -- Riyadh"). */}
+                      {warehouses.map((w) => (
+                        <option key={w.id} value={w.id}>
+                          {w.city ? `${w.name} — ${w.city}` : w.name}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+
+                  <Field label="Requested Delivery Date">
+                    <input type="date" className={inputClass} value={form.deliveryDate} onChange={set('deliveryDate')} />
+                  </Field>
+                </>
+              )}
+
+              <div className="flex flex-col gap-3 rounded-lg border border-border-strong p-3">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-text-faint">Transporter</p>
+                <Field
+                  label="Transporter"
+                  action={canAddMasterData && (
+                    <AddButton label="Add transporter" onClick={() => setAddModal({ entityType: 'transporter', field: 'transporterId' })} />
                   )}
                 >
-                  <select
-                    className={inputClass}
-                    value={form.destinationWarehouseId}
-                    onChange={set('destinationWarehouseId')}
-                  >
-                    {!form.destinationWarehouseId && (
-                      <option value="" disabled>
-                        Select warehouse…
-                      </option>
-                    )}
-                    {/* "Name -- City" so future same-named warehouses in different cities stay
-                        distinguishable (e.g. "Warehouse A -- Jeddah" vs "Warehouse A -- Riyadh"). */}
-                    {warehouses.map((w) => (
-                      <option key={w.id} value={w.id}>
-                        {w.city ? `${w.name} — ${w.city}` : w.name}
+                  <select className={inputClass} value={form.transporterId} onChange={set('transporterId')}>
+                    <option value="">Not assigned yet</option>
+                    {transporters.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
                       </option>
                     ))}
                   </select>
                 </Field>
-              )}
 
-              <Field
-                label="Transporter"
-                action={canAddMasterData && (
-                  <AddButton label="Add transporter" onClick={() => setAddModal({ entityType: 'transporter', field: 'transporterId' })} />
-                )}
-              >
-                <select className={inputClass} value={form.transporterId} onChange={set('transporterId')}>
-                  <option value="">Not assigned yet</option>
-                  {transporters.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-
-              <Field label="Loading Date">
-                <input type="date" className={inputClass} value={form.dispatchDate} onChange={set('dispatchDate')} />
-              </Field>
-
-              <Field label="Requested Delivery Date">
-                <input type="date" className={inputClass} value={form.deliveryDate} onChange={set('deliveryDate')} />
-              </Field>
-
-              {form.tripType === 'customer' && (
-                <Field label="Receiver Mobile">
-                  <input
-                    className={inputClass}
-                    value={form.deliveryContactMobile}
-                    onChange={set('deliveryContactMobile')}
-                    placeholder="Optional"
-                  />
+                <Field label="Loading Date">
+                  <input type="date" className={inputClass} value={form.dispatchDate} onChange={set('dispatchDate')} />
                 </Field>
-              )}
+              </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <Field label="Driver Name">
