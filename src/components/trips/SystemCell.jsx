@@ -71,7 +71,7 @@ function DeliveryDateCell({ trip }) {
       }}
       className="flex w-full items-center text-left"
     >
-      {needsDate ? <NeedsDateBadge /> : <span className="text-text-secondary">{formatDate(trip.deliveryDate)}</span>}
+      {needsDate ? <NeedsDateBadge /> : <span className="text-text-primary">{formatDate(trip.deliveryDate)}</span>}
     </button>
   )
 }
@@ -121,7 +121,7 @@ function TransporterCell({ trip }) {
       }}
       className="flex w-full items-center text-left"
     >
-      <span className="truncate text-text-secondary">{transporterName(trip)}</span>
+      <span className="truncate text-text-primary">{transporterName(trip)}</span>
     </button>
   )
 }
@@ -144,7 +144,7 @@ export function SystemCell({ columnId, trip }) {
       )
 
     case 'destination':
-      return <span className="truncate text-text-secondary">{trip.destination}</span>
+      return <span className="truncate text-text-primary">{trip.destination}</span>
 
     case 'transporter':
       return <TransporterCell trip={trip} />
@@ -155,23 +155,23 @@ export function SystemCell({ columnId, trip }) {
       return trip.driver ? (
         <span className="flex min-w-0 items-center gap-1.5">
           <Avatar name={trip.driver.name} initials={getInitials(trip.driver.name)} size={18} />
-          <span className="truncate text-text-secondary">{trip.driver.name}</span>
+          <span className="truncate text-text-primary">{trip.driver.name}</span>
         </span>
       ) : (
         <span className="text-text-faint">—</span>
       )
 
     case 'plateNo':
-      return <span className="truncate tabular-nums text-text-secondary">{trip.plateNo || <span className="text-text-faint">—</span>}</span>
+      return <span className="truncate tabular-nums text-text-primary">{trip.plateNo || <span className="text-text-faint">—</span>}</span>
 
     case 'driverPhone':
-      return <span className="truncate text-text-secondary">{trip.driver?.phone || <span className="text-text-faint">—</span>}</span>
+      return <span className="truncate text-text-primary">{trip.driver?.phone || <span className="text-text-faint">—</span>}</span>
 
     case 'vehicleType':
-      return <span className="truncate text-text-secondary">{trip.vehicleType || <span className="text-text-faint">—</span>}</span>
+      return <span className="truncate text-text-primary">{trip.vehicleType || <span className="text-text-faint">—</span>}</span>
 
     case 'dispatchDate':
-      return <span className="text-text-secondary">{formatDate(trip.dispatchDate)}</span>
+      return <span className="text-text-primary">{formatDate(trip.dispatchDate)}</span>
 
     case 'deliveryDate':
       return <DeliveryDateCell trip={trip} />
@@ -180,7 +180,7 @@ export function SystemCell({ columnId, trip }) {
       return <TripStatusPill status={trip.status} />
 
     case 'remarks':
-      return <span className="truncate text-text-secondary">{trip.remarks || <span className="text-text-faint">—</span>}</span>
+      return <span className="truncate text-text-primary">{trip.remarks || <span className="text-text-faint">—</span>}</span>
 
     default:
       return null

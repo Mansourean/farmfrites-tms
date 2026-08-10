@@ -121,7 +121,7 @@ export function Sidebar({ open = false, onClose }) {
         </div>
       )}
 
-      <aside className="hidden h-full shrink-0 flex-col border-r border-border bg-surface-alt md:flex" style={{ width: DESKTOP_WIDTH }}>
+      <aside className="hidden shrink-0 flex-col border-r border-border bg-surface-alt md:flex" style={{ width: DESKTOP_WIDTH }}>
         <SidebarContent collapsed groups={visibleGroups} />
       </aside>
     </>

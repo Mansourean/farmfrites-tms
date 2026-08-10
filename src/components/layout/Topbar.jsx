@@ -32,8 +32,8 @@ export function TopBar({ onMenuClick }) {
           <Icon name="menu" className="h-4.5 w-4.5" />
         </button>
 
-        <span className="hidden text-[13px] font-medium text-text-secondary md:inline">
-          Transportation Management System
+        <span className="hidden text-[19px] font-extrabold tracking-tight text-text-primary md:inline">
+          Farm Frites
         </span>
 
         <div className="mx-1 hidden h-4 w-px bg-border md:block" />

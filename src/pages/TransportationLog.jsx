@@ -88,7 +88,7 @@ export function TransportationLog() {
     <ColumnsProvider>
       <div className="flex flex-1 flex-col overflow-hidden">
         <FilterBar filters={filters} onFilterChange={setFilters} onExport={() => exportTripsToExcel(filtered)} />
-        <div className="flex-1 overflow-auto pt-5">
+        <div className="flex-1 overflow-auto pt-2">
           <TripsView trips={filtered} />
         </div>
       </div>

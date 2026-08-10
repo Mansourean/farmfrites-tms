@@ -16,10 +16,10 @@ export function AppLayout() {
     <TripPanelProvider>
       <WhatsappModalProvider>
         <DeleteTripProvider>
-          <div className="flex h-screen bg-surface">
-            <Sidebar open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
-            <div className="flex flex-1 flex-col overflow-hidden">
-              <TopBar onMenuClick={() => setMobileNavOpen(true)} />
+          <div className="flex h-screen flex-col bg-surface">
+            <TopBar onMenuClick={() => setMobileNavOpen(true)} />
+            <div className="flex flex-1 overflow-hidden">
+              <Sidebar open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
               <main className="flex flex-1 flex-col overflow-hidden bg-surface-canvas">
                 <Outlet />
               </main>

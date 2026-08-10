@@ -33,7 +33,7 @@ export function FilterBar({ filters, onFilterChange, onExport }) {
   const set = (key) => (value) => onFilterChange({ ...filters, [key]: value })
 
   return (
-    <div className="flex min-h-toolbar shrink-0 flex-wrap items-center gap-x-5 gap-y-1.5 px-4 py-2">
+    <div className="flex min-h-toolbar shrink-0 flex-wrap items-center gap-x-5 gap-y-1.5 border-b border-border px-4 py-2">
       <div className="flex flex-wrap items-center gap-1">
         <div className="relative mr-1 w-full sm:w-64">
           <Icon name="search" className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-muted" />
