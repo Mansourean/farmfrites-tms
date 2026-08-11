@@ -45,7 +45,7 @@ export function Warehouses() {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface-alt p-4">
         <div className="min-w-0">
           <p className="text-[13px] font-semibold text-text-primary">Gate Check-In / Check-Out</p>
-          <p className="text-[12.5px] text-text-muted">Open at the gate to search a truck and record its check-in/check-out time.</p>
+          <p className="text-[12.5px] text-text-muted">Open at the gate to see today's confirmed and at-gate trucks and record check-in/check-out.</p>
         </div>
         <Link
           to="/gate"

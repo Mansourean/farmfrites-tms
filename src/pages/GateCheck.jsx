@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTrips } from '../context/TripsContext'
 import { useAuth } from '../context/AuthContext'
-import { originLabel, transporterName } from '../data/lookup'
-import { formatDateTime } from '../utils/format'
+import { useToast } from '../context/ToastContext'
+import { originLabel } from '../data/lookup'
+import { formatDate } from '../utils/format'
 import { Icon } from '../components/ui/Icon'
+import { TripStatusPill } from '../components/trips/TripStatusPill'
 
 const DELAY_THRESHOLD_MS = 2 * 60 * 60 * 1000 // 2 hours
 
@@ -12,19 +14,14 @@ function canOperateGate(role) {
   return role === 'admin' || role === 'gate'
 }
 
-// A completed gate visit (both timestamps set) -- shown as a read-only "last visit" summary.
-// Doesn't imply the trip can be checked in again: once gate_check_in has moved status to
-// 'At Gate', it never reverts to 'Waiting for Loading' on its own (checkout, see 0021,
-// deliberately never changes status), so canCheckIn below -- not this -- decides that.
 function isCheckedOut(trip) {
   return !!trip.gateCheckInAt && !!trip.gateCheckOutAt
 }
 function isAtGate(trip) {
   return !!trip.gateCheckInAt && !trip.gateCheckOutAt
 }
-// Mirrors gate_check_in's own server-side guard exactly (see 0021): a trip can only be checked
-// in while it's Confirmed. Kept as its own status check, not derived from the gate timestamps,
-// so the button here never offers an action the RPC would just reject.
+// Mirrors gate_check_in's own server-side guard exactly (see 0021/0022): a trip can only be
+// checked in while it's Confirmed.
 function canCheckIn(trip) {
   return trip.status === 'waiting_for_loading'
 }
@@ -38,36 +35,88 @@ function formatDuration(ms) {
   return `${h}h ${m}m`
 }
 
-// Trips currently sitting at the gate (checked in, not yet checked out), longest-waiting first
-// so the truck most likely to be overdue is always at the top of the list.
-function atGateList(trips) {
-  return trips
-    .filter(isAtGate)
-    .sort((a, b) => new Date(a.gateCheckInAt).getTime() - new Date(b.gateCheckInAt).getTime())
+// dispatchDate is a plain calendar date (YYYY-MM-DD, UTC-anchored -- see utils/format.js's own
+// comment on why formatDate pins to UTC), so "today" is computed the same way here rather than
+// through the viewer's local timezone -- comparing those two conventions against each other is
+// exactly the class of bug already fixed once in this app (Loading Date showing a day early).
+function isDispatchDateToday(dateStr) {
+  if (!dateStr) return false
+  return dateStr === new Date().toISOString().slice(0, 10)
+}
+
+// gate_check_out_at is a real timestamp (an actual moment), not a calendar-only date, so "today"
+// here deliberately uses the viewer's local calendar day instead -- the gate employee thinks in
+// terms of their own today, same reasoning formatDateTime already uses local time for real
+// timestamps elsewhere in the app.
+function isTimestampToday(iso) {
+  if (!iso) return false
+  return new Date(iso).toDateString() === new Date().toDateString()
+}
+
+// The table shows exactly what a gate employee needs today, with no search required: trucks
+// confirmed and loading today (not yet checked in), anything currently at the gate regardless
+// of date (it's physically present until it leaves), and anything checked out today (so the
+// completed Gate Duration/status stays visible for the rest of the day).
+function isRelevantToday(trip) {
+  if (isAtGate(trip)) return true
+  if (isCheckedOut(trip) && isTimestampToday(trip.gateCheckOutAt)) return true
+  if (trip.status === 'waiting_for_loading' && isDispatchDateToday(trip.dispatchDate)) return true
+  return false
+}
+
+function DelayReasonModal({ trip, onCancel, onConfirm, submitting }) {
+  const [reason, setReason] = useState('')
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/30" onClick={onCancel} />
+      <div className="relative w-full max-w-[400px] rounded-xl bg-surface shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+        <div className="border-b border-border px-5 py-4">
+          <p className="text-[14px] font-semibold text-text-primary">Delay Reason Required</p>
+          <p className="mt-1 text-[12.5px] text-text-muted">
+            {trip.salesNo} · {trip.plateNo || '—'} has been at the gate over 2 hours. A reason is required to check out.
+          </p>
+        </div>
+        <div className="px-5 py-4">
+          <textarea
+            autoFocus
+            required
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="e.g. Waiting on loading, paperwork delay, driver break..."
+            className="min-h-[90px] w-full resize-none rounded-lg border border-border-strong bg-surface px-3 py-2.5 text-[14px] text-text-primary outline-none focus:border-accent-green-500"
+          />
+        </div>
+        <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
+          <button type="button" onClick={onCancel} className="rounded-md px-3 py-1.5 text-[13px] font-medium text-text-secondary hover:bg-surface-hover">
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={submitting || !reason.trim()}
+            onClick={() => onConfirm(reason.trim())}
+            className="rounded-md bg-accent-green-500 px-3.5 py-1.5 text-[13px] font-medium text-white hover:bg-accent-green-600 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {submitting ? 'Checking Out…' : 'Confirm Check Out'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export function GateCheck() {
-  const { trips, findTripByPlateForGate, findTripBySalesNoForGate, checkInGate, checkOutGate } = useTrips()
+  const { trips, checkInGate, checkOutGate } = useTrips()
   const { currentUser, logout } = useAuth()
+  const { notify } = useToast()
   const navigate = useNavigate()
   const editable = canOperateGate(currentUser?.role)
 
-  const handleLogout = () => {
-    logout()
-    navigate('/login', { replace: true })
-  }
-
-  const [plate, setPlate] = useState('')
-  const [salesNoInput, setSalesNoInput] = useState('')
-  const [trip, setTrip] = useState(null)
-  const [notFoundQuery, setNotFoundQuery] = useState('')
-  const [delayReason, setDelayReason] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [actionError, setActionError] = useState('')
-  const [result, setResult] = useState(null) // { type: 'checked-in' | 'checked-out', trip }
-  // Ticks every 30s purely to force a re-render so elapsed durations / the delay alert stay
-  // live without the user needing to touch anything -- no state is derived from the tick value
-  // itself, it just makes `Date.now()` reads below re-evaluate.
+  const [search, setSearch] = useState('')
+  const [submittingId, setSubmittingId] = useState(null)
+  const [delayModalTrip, setDelayModalTrip] = useState(null)
+  // Ticks every 30s purely to force a re-render so elapsed Gate Time / delay highlighting stay
+  // live without anyone needing to touch anything -- see the same pattern used elsewhere in
+  // this app for the same reason (e.g. TripsTable's justUpdated pulse).
   const [, setTick] = useState(0)
 
   useEffect(() => {
@@ -75,282 +124,204 @@ export function GateCheck() {
     return () => clearInterval(id)
   }, [])
 
-  // Live updates across gate terminals/sessions come from TripsContext's own global Realtime
-  // subscription (see 0020/0021) -- `trips` here already reflects other sessions' check-ins/
-  // outs without this page needing a subscription of its own; the effect below just keeps the
-  // currently-selected trip in sync with that shared state.
-
-  const selectTrip = (found, query) => {
-    setActionError('')
-    setDelayReason('')
-    if (found) {
-      setTrip(found)
-      setNotFoundQuery('')
-    } else {
-      setTrip(null)
-      setNotFoundQuery(query)
-    }
+  const handleLogout = () => {
+    logout()
+    navigate('/login', { replace: true })
   }
 
-  // Re-reads the freshest copy of the currently selected trip from context (e.g. after a
-  // realtime-triggered reload changed it out from under the page).
-  useEffect(() => {
-    if (!trip) return
-    const fresh = trips.find((t) => t.id === trip.id)
-    if (fresh) setTrip(fresh)
-  }, [trips, trip?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  const normalizedSearch = search.trim().toUpperCase()
+  const rows = trips
+    .filter(isRelevantToday)
+    .filter(
+      (t) =>
+        !normalizedSearch ||
+        t.plateNo.toUpperCase().includes(normalizedSearch) ||
+        t.salesNo.toUpperCase().includes(normalizedSearch),
+    )
+    .sort((a, b) => {
+      // At-gate trucks first (longest-waiting first, most likely to need attention), then
+      // not-yet-checked-in confirmed trucks, then completed ones at the bottom.
+      const rank = (t) => (isAtGate(t) ? 0 : isCheckedOut(t) ? 2 : 1)
+      const ra = rank(a)
+      const rb = rank(b)
+      if (ra !== rb) return ra - rb
+      if (ra === 0) return new Date(a.gateCheckInAt) - new Date(b.gateCheckInAt)
+      return b.createdSeq - a.createdSeq
+    })
 
-  const handleMatchPlate = (e) => {
-    e?.preventDefault()
-    if (!plate.trim()) return
-    selectTrip(findTripByPlateForGate(plate), plate)
-  }
-
-  const handleMatchSalesNo = (e) => {
-    e?.preventDefault()
-    if (!salesNoInput.trim()) return
-    selectTrip(findTripBySalesNoForGate(salesNoInput), salesNoInput)
-  }
-
-  const elapsedMs = trip?.gateCheckInAt ? Date.now() - new Date(trip.gateCheckInAt).getTime() : 0
-  const isDelayed = isAtGate(trip ?? {}) && elapsedMs > DELAY_THRESHOLD_MS
-
-  const handleCheckIn = async () => {
-    setActionError('')
-    setSubmitting(true)
+  const handleCheckIn = async (trip) => {
+    setSubmittingId(trip.id)
     try {
-      const updated = await checkInGate(trip.id)
-      setResult({ type: 'checked-in', trip: updated })
+      await checkInGate(trip.id)
+      notify(`${trip.salesNo} checked in at the gate.`, { type: 'success' })
     } catch (err) {
-      setActionError(err.message || 'Could not check in this trip.')
+      notify(err.message || 'Could not check in this trip.', { type: 'error' })
     } finally {
-      setSubmitting(false)
+      setSubmittingId(null)
     }
   }
 
-  const handleCheckOut = async (e) => {
-    e.preventDefault()
-    setActionError('')
-    setSubmitting(true)
+  const handleCheckOutClick = (trip) => {
+    const elapsedMs = Date.now() - new Date(trip.gateCheckInAt).getTime()
+    if (elapsedMs > DELAY_THRESHOLD_MS) {
+      setDelayModalTrip(trip)
+      return
+    }
+    submitCheckOut(trip, null)
+  }
+
+  const submitCheckOut = async (trip, reason) => {
+    setSubmittingId(trip.id)
     try {
-      const updated = await checkOutGate(trip.id, delayReason)
-      setResult({ type: 'checked-out', trip: updated })
+      await checkOutGate(trip.id, reason)
+      notify(`${trip.salesNo} checked out at the gate.`, { type: 'success' })
+      setDelayModalTrip(null)
     } catch (err) {
-      setActionError(err.message || 'Could not check out this trip.')
+      notify(err.message || 'Could not check out this trip.', { type: 'error' })
     } finally {
-      setSubmitting(false)
+      setSubmittingId(null)
     }
   }
-
-  const reset = () => {
-    setPlate('')
-    setSalesNoInput('')
-    setTrip(null)
-    setNotFoundQuery('')
-    setDelayReason('')
-    setResult(null)
-    setActionError('')
-  }
-
-  const waiting = useMemo(() => atGateList(trips), [trips])
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#0b0b0a] text-white">
-      <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3">
-        <span className="grid h-7 w-7 place-items-center rounded-[6px] bg-white text-[11px] font-bold text-[#0b0b0a]">FF</span>
-        <div className="min-w-0 flex-1 leading-[1.15]">
-          <p className="truncate text-[13px] font-semibold">Farm Frites — Gate Check-In / Check-Out</p>
-          <p className="truncate text-[10.5px] text-white/50">Search a truck by Plate Number or Sales No</p>
+    <div className="flex min-h-screen flex-col bg-surface-canvas">
+      <div className="flex flex-wrap items-center gap-3 border-b border-border bg-surface px-4 py-3 sm:px-6">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[8px] bg-[var(--color-ink)] text-[11px] font-bold text-[var(--color-ink-text)]">
+          FF
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[14px] font-semibold text-text-primary">Gate Check-In / Check-Out</p>
+          <p className="truncate text-[12px] text-text-muted">Today's confirmed, at-gate, and completed trucks</p>
+        </div>
+        <div className="relative w-full sm:w-64">
+          <Icon name="search" className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-muted" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Filter by Plate No or Sales No..."
+            className="w-full rounded-md border border-border-strong bg-surface-alt py-1.5 pl-7 pr-2 text-[13px] text-text-primary outline-none placeholder:text-text-faint focus:border-brand-400 focus:bg-surface"
+          />
         </div>
         <button
           type="button"
           onClick={handleLogout}
-          className="flex shrink-0 items-center gap-1.5 rounded-md border border-white/15 px-2.5 py-1.5 text-[12px] font-medium text-white/70 hover:bg-white/10 hover:text-white"
+          className="flex shrink-0 items-center gap-1.5 rounded-md border border-border-strong px-2.5 py-1.5 text-[12px] font-medium text-text-secondary hover:bg-surface-hover hover:text-text-primary"
         >
           <Icon name="logOut" className="h-3.5 w-3.5" />
           Sign Out
         </button>
       </div>
 
-      {result ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
-          <span className="grid h-16 w-16 place-items-center rounded-full bg-[#1E9E6A]">
-            <Icon name="check" className="h-8 w-8" strokeWidth={2.5} />
-          </span>
-          <p className="text-[17px] font-semibold">{result.type === 'checked-in' ? 'Checked In' : 'Checked Out'}</p>
-          <p className="text-[13px] text-white/60">
-            {result.trip.salesNo} · {originLabel(result.trip)} → {result.trip.destination}
-          </p>
-          {result.type === 'checked-out' && (
-            <p className="text-[13px] text-white/60">
-              Gate duration: {formatDuration(new Date(result.trip.gateCheckOutAt) - new Date(result.trip.gateCheckInAt))}
-            </p>
-          )}
-          <button type="button" onClick={reset} className="mt-4 rounded-lg bg-white px-5 py-2.5 text-[14px] font-semibold text-[#0b0b0a]">
-            Next Truck
-          </button>
-          <Link to="/" className="mt-2 text-[13px] font-medium text-white/60 hover:text-white/80">
-            Back to Transportation Log
-          </Link>
-        </div>
-      ) : trip ? (
-        <div className="flex flex-1 flex-col px-5 py-6">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-white/40">Matched Trip</p>
-          <div className="mt-2 rounded-xl border border-white/15 bg-white/5 p-4">
-            <p className="text-[16px] font-semibold">{trip.salesNo}</p>
-            <p className="mt-1 text-[13.5px] text-white/70">
-              {originLabel(trip)} → {trip.destination}
-            </p>
-            <div className="mt-3 grid grid-cols-2 gap-2 text-[12.5px] text-white/60">
-              <p>
-                Plate: <span className="text-white">{trip.plateNo || '—'}</span>
-              </p>
-              <p>
-                Driver: <span className="text-white">{trip.driver?.name || '—'}</span>
-              </p>
-              <p className="col-span-2">
-                Transporter: <span className="text-white">{transporterName(trip)}</span>
-              </p>
+      {!editable && (
+        <p className="border-b border-border bg-[var(--color-warning-bg)] px-4 py-2 text-[12.5px] font-medium text-[var(--color-warning-text)] sm:px-6">
+          Your role does not have permission to perform gate actions -- viewing only.
+        </p>
+      )}
+
+      <div className="flex-1 overflow-auto p-4 sm:p-6">
+        {rows.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-border bg-surface py-16 text-center">
+            <div className="grid h-11 w-11 place-items-center rounded-full bg-surface-alt">
+              <Icon name="truck" className="h-5 w-5 text-text-muted" />
             </div>
+            <p className="text-[14px] font-medium text-text-primary">
+              {normalizedSearch ? 'No trucks match your filter' : 'No relevant trucks right now'}
+            </p>
+            <p className="text-[13px] text-text-muted">
+              {normalizedSearch ? 'Try a different plate or sales number.' : "Confirmed trucks loading today will appear here automatically."}
+            </p>
           </div>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-border bg-surface">
+            <table className="w-full min-w-[900px] border-collapse text-[13px]">
+              <thead className="bg-surface-alt text-[11px] font-medium uppercase tracking-wide text-text-faint">
+                <tr>
+                  <th className="border-b border-border px-3 py-2.5 text-left">Plate No</th>
+                  <th className="border-b border-border px-3 py-2.5 text-left">Sales No</th>
+                  <th className="border-b border-border px-3 py-2.5 text-left">Client</th>
+                  <th className="border-b border-border px-3 py-2.5 text-left">Destination</th>
+                  <th className="border-b border-border px-3 py-2.5 text-left">Driver</th>
+                  <th className="border-b border-border px-3 py-2.5 text-left">Loading Date</th>
+                  <th className="border-b border-border px-3 py-2.5 text-left">Status</th>
+                  <th className="border-b border-border px-3 py-2.5 text-left">Gate Time</th>
+                  <th className="border-b border-border px-3 py-2.5 text-left">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((trip, i) => {
+                  const atGate = isAtGate(trip)
+                  const checkedOut = isCheckedOut(trip)
+                  const elapsedMs = trip.gateCheckInAt ? Date.now() - new Date(trip.gateCheckInAt).getTime() : 0
+                  const delayed = atGate && elapsedMs > DELAY_THRESHOLD_MS
+                  const submitting = submittingId === trip.id
 
-          {isAtGate(trip) && (
-            <div className={`mt-3 rounded-xl border p-4 ${isDelayed ? 'border-[#E5484D]/40 bg-[#E5484D]/10' : 'border-white/15 bg-white/5'}`}>
-              {isDelayed && (
-                <p className="mb-1 flex items-center gap-1.5 text-[12.5px] font-semibold text-[#FF8A80]">
-                  <Icon name="clock" className="h-3.5 w-3.5" />
-                  Delay Alert — over 2 hours at the gate
-                </p>
-              )}
-              <p className="text-[12px] text-white/50">Checked in {formatDateTime(trip.gateCheckInAt)}</p>
-              <p className="text-[22px] font-semibold tabular-nums">{formatDuration(elapsedMs)}</p>
-              <p className="text-[11.5px] text-white/40">at the gate so far</p>
-            </div>
-          )}
-
-          {isCheckedOut(trip) && (
-            <div className="mt-3 rounded-xl border border-white/15 bg-white/5 p-4 text-[12.5px] text-white/70">
-              <p>
-                Last visit: {formatDateTime(trip.gateCheckInAt)} → {formatDateTime(trip.gateCheckOutAt)} (
-                {formatDuration(new Date(trip.gateCheckOutAt) - new Date(trip.gateCheckInAt))})
-              </p>
-              {trip.gateDelayReason && <p className="mt-1 text-[#FF8A80]">Delay reason: {trip.gateDelayReason}</p>}
-            </div>
-          )}
-
-          {actionError && <p className="mt-4 rounded-lg bg-[#4A1412] px-3 py-2 text-[12.5px] font-medium text-[#FF8A80]">{actionError}</p>}
-
-          {!editable ? (
-            <p className="mt-auto pt-8 text-center text-[13px] text-white/50">Your role does not have permission to perform gate actions.</p>
-          ) : isAtGate(trip) ? (
-            <form onSubmit={handleCheckOut} className="mt-auto flex flex-col gap-3 pt-8">
-              {isDelayed && (
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-[12px] font-medium text-white/60">Delay Reason (required — over 2 hours)</span>
-                  <textarea
-                    autoFocus
-                    required
-                    value={delayReason}
-                    onChange={(e) => setDelayReason(e.target.value)}
-                    placeholder="e.g. Waiting on loading, paperwork delay, driver break..."
-                    className="min-h-[80px] resize-none rounded-lg border border-white/20 bg-white/5 p-3 text-[14px] text-white outline-none placeholder:text-white/30 focus:border-white/40"
-                  />
-                </label>
-              )}
-              <button
-                type="submit"
-                disabled={submitting}
-                className="flex items-center justify-center gap-2 rounded-2xl bg-[#1E9E6A] py-8 text-[16px] font-semibold disabled:opacity-60"
-              >
-                <Icon name="check" className="h-7 w-7" strokeWidth={2.5} />
-                {submitting ? 'Checking Out…' : 'Check Out'}
-              </button>
-            </form>
-          ) : canCheckIn(trip) ? (
-            <div className="mt-auto pt-8">
-              <button
-                type="button"
-                onClick={handleCheckIn}
-                disabled={submitting}
-                className="flex w-full flex-col items-center justify-center gap-2 rounded-2xl bg-[#4F7CFF] py-8 text-[16px] font-semibold disabled:opacity-60"
-              >
-                <Icon name="truck" className="h-7 w-7" strokeWidth={2.5} />
-                {submitting ? 'Checking In…' : 'Check In'}
-              </button>
-            </div>
-          ) : (
-            <p className="mt-auto pt-8 text-center text-[13px] text-white/50">
-              This trip must be Confirmed before it can be checked in at the gate (current status: {trip.status.replace(/_/g, ' ')}).
-            </p>
-          )}
-        </div>
-      ) : (
-        <div className="flex flex-1 flex-col px-5 py-6">
-          <form onSubmit={handleMatchPlate} className="flex flex-col gap-2">
-            <label className="flex flex-col gap-1.5">
-              <span className="text-[12px] font-medium text-white/60">Plate Number</span>
-              <input
-                value={plate}
-                onChange={(e) => setPlate(e.target.value)}
-                placeholder="e.g. 4521 KTB"
-                className="rounded-lg border border-white/20 bg-white/5 px-3 py-2.5 text-[15px] tracking-wide text-white outline-none placeholder:text-white/30 focus:border-white/40"
-              />
-            </label>
-            <button type="submit" className="rounded-lg bg-[#4F7CFF] py-2.5 text-[14px] font-semibold">
-              Search
-            </button>
-          </form>
-
-          <form onSubmit={handleMatchSalesNo} className="mt-4 flex flex-col gap-2">
-            <label className="flex flex-col gap-1.5">
-              <span className="text-[12px] font-medium text-white/60">Sales No</span>
-              <input
-                value={salesNoInput}
-                onChange={(e) => setSalesNoInput(e.target.value)}
-                placeholder="e.g. SO-24681"
-                className="rounded-lg border border-white/20 bg-white/5 px-3 py-2.5 text-[15px] tracking-wide text-white outline-none placeholder:text-white/30 focus:border-white/40"
-              />
-            </label>
-            <button type="submit" className="rounded-lg border border-white/20 py-2.5 text-[14px] font-semibold">
-              Search
-            </button>
-          </form>
-
-          {notFoundQuery && (
-            <p className="mt-3 text-[12.5px] text-[#FF8A80]">No trip matches “{notFoundQuery}”. Check the value and try again.</p>
-          )}
-
-          <div className="mt-5 flex flex-col gap-2">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-white/40">Currently at Gate ({waiting.length})</p>
-            {waiting.length === 0 ? (
-              <p className="text-[12.5px] text-white/40">No trucks currently at the gate.</p>
-            ) : (
-              waiting.map((t) => {
-                const overdue = Date.now() - new Date(t.gateCheckInAt).getTime() > DELAY_THRESHOLD_MS
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => selectTrip(t)}
-                    className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2.5 text-left ${
-                      overdue ? 'border-[#E5484D]/40 bg-[#E5484D]/10' : 'border-white/15 bg-white/5'
-                    }`}
-                  >
-                    <span>
-                      <span className="block text-[13.5px] font-medium">{t.salesNo}</span>
-                      <span className="block text-[12px] text-white/50">
-                        {originLabel(t)} → {t.destination}
-                      </span>
-                    </span>
-                    <span className={`text-[11px] font-medium uppercase tracking-wide ${overdue ? 'text-[#FF8A80]' : 'text-white/40'}`}>
-                      {overdue ? 'Delayed' : formatDuration(Date.now() - new Date(t.gateCheckInAt).getTime())}
-                    </span>
-                  </button>
-                )
-              })
-            )}
+                  return (
+                    <tr key={trip.id} className={i !== rows.length - 1 ? 'border-b border-border/60' : ''}>
+                      <td className="px-3 py-2.5 text-[14px] font-bold tabular-nums text-text-primary">{trip.plateNo || '—'}</td>
+                      <td className="px-3 py-2.5 font-medium text-text-primary">{trip.salesNo}</td>
+                      <td className="max-w-[160px] truncate px-3 py-2.5 text-text-primary">{originLabel(trip)}</td>
+                      <td className="max-w-[160px] truncate px-3 py-2.5 text-text-primary">{trip.destination}</td>
+                      <td className="max-w-[140px] truncate px-3 py-2.5 text-text-primary">{trip.driver?.name || '—'}</td>
+                      <td className="px-3 py-2.5 text-text-primary">{formatDate(trip.dispatchDate)}</td>
+                      <td className="px-3 py-2.5">
+                        <TripStatusPill status={trip.status} />
+                      </td>
+                      <td className="px-3 py-2.5">
+                        {atGate ? (
+                          <span className={`font-semibold tabular-nums ${delayed ? 'text-[var(--color-danger-text)]' : 'text-text-primary'}`}>
+                            {delayed && <Icon name="clock" className="mr-1 inline h-3 w-3" />}
+                            {formatDuration(elapsedMs)}
+                          </span>
+                        ) : checkedOut ? (
+                          <span className="text-text-primary">
+                            {formatDuration(new Date(trip.gateCheckOutAt) - new Date(trip.gateCheckInAt))}
+                            {trip.gateDelayReason && <span className="ml-1 text-[11px] text-[var(--color-danger-text)]">(delayed)</span>}
+                          </span>
+                        ) : (
+                          <span className="text-text-faint">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        {!editable ? (
+                          <span className="text-text-faint">—</span>
+                        ) : atGate ? (
+                          <button
+                            type="button"
+                            disabled={submitting}
+                            onClick={() => handleCheckOutClick(trip)}
+                            className="rounded-md bg-[var(--color-danger-text)] px-2.5 py-1.5 text-[12.5px] font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {submitting ? 'Checking Out…' : 'Check Out'}
+                          </button>
+                        ) : canCheckIn(trip) ? (
+                          <button
+                            type="button"
+                            disabled={submitting}
+                            onClick={() => handleCheckIn(trip)}
+                            className="rounded-md bg-accent-green-500 px-2.5 py-1.5 text-[12.5px] font-medium text-white hover:bg-accent-green-600 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {submitting ? 'Checking In…' : 'Check In'}
+                          </button>
+                        ) : (
+                          <span className="text-text-faint">Completed</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
-        </div>
+        )}
+      </div>
+
+      {delayModalTrip && (
+        <DelayReasonModal
+          trip={delayModalTrip}
+          submitting={submittingId === delayModalTrip.id}
+          onCancel={() => setDelayModalTrip(null)}
+          onConfirm={(reason) => submitCheckOut(delayModalTrip, reason)}
+        />
       )}
     </div>
   )
