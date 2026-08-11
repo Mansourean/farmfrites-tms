@@ -37,6 +37,15 @@ export default defineConfig(({ mode }) => {
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['favicon.svg', 'icons/apple-touch-icon.png'],
+        workbox: {
+          // /assign/:token (the public WhatsApp transporter link) and /print/:id must always
+          // reflect live server state -- a stale service worker on a device that has visited
+          // the site before (this project has repeatedly hit stale-cache issues after a deploy)
+          // must never be able to serve an old cached shell for either. Excluding them from the
+          // SPA navigateFallback forces a genuine network request every time, same as a device
+          // that has never visited the site at all.
+          navigateFallbackDenylist: [/^\/assign\//, /^\/print\//],
+        },
         manifest: {
           name: 'Farm Frites — Transportation Management System',
           short_name: 'Farm Frites TMS',

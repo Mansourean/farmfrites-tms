@@ -16,14 +16,24 @@ const inputClass =
 // submitted) until the trip reaches a terminal status server-side.
 export function DriverAssignment() {
   const { token } = useParams()
-  const [status, setStatus] = useState('loading') // loading | not-found | closed | form | submitted
+  const [status, setStatus] = useState('loading') // loading | not-found | load-error | closed | form | submitted
   const [context, setContext] = useState(null)
   const [form, setForm] = useState({ driverName: '', driverMobile: '', plateNo: '' })
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [retryCount, setRetryCount] = useState(0)
 
+  // 'not-found' (a genuine, correctly-resolved "no such token") and 'load-error' (the lookup
+  // itself failed -- network, a stale cached bundle after a deploy, a transient Supabase error)
+  // used to collapse into the exact same "Link not found" message, which made every failure of
+  // this page look identical to a bad link and impossible to tell apart from the outside. They
+  // now render distinctly, and the real error is logged so a report of "the link doesn't work"
+  // is actually diagnosable instead of always pointing at the token. Retry re-runs the same
+  // lookup in place rather than a full page reload, which also sidesteps a stale cached page
+  // shell if that's what caused the failure the first time.
   useEffect(() => {
     let cancelled = false
+    setStatus('loading')
     getAssignmentContext(token)
       .then((ctx) => {
         if (cancelled) return
@@ -39,13 +49,15 @@ export function DriverAssignment() {
         })
         setStatus(ctx.is_active ? 'form' : 'closed')
       })
-      .catch(() => {
-        if (!cancelled) setStatus('not-found')
+      .catch((err) => {
+        if (cancelled) return
+        console.error('Assignment link failed to load:', err)
+        setStatus('load-error')
       })
     return () => {
       cancelled = true
     }
-  }, [token])
+  }, [token, retryCount])
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
 
@@ -85,6 +97,20 @@ export function DriverAssignment() {
             <div className="py-2 text-center">
               <p className="text-[15px] font-semibold text-text-primary">Link not found</p>
               <p className="mt-1 text-[13px] text-text-muted">This link is invalid. Please contact Farm Frites logistics.</p>
+            </div>
+          )}
+
+          {status === 'load-error' && (
+            <div className="py-2 text-center">
+              <p className="text-[15px] font-semibold text-text-primary">Could not load this link</p>
+              <p className="mt-1 text-[13px] text-text-muted">Check your internet connection and try again.</p>
+              <button
+                type="button"
+                onClick={() => setRetryCount((n) => n + 1)}
+                className="mt-3 rounded-lg bg-[var(--color-ink)] px-4 py-2 text-[13px] font-medium text-[var(--color-ink-text)] hover:bg-[var(--color-ink-hover)]"
+              >
+                Try again
+              </button>
             </div>
           )}
 
