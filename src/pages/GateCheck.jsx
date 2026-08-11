@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTrips } from '../context/TripsContext'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -44,8 +44,14 @@ function atGateList(trips) {
 
 export function GateCheck() {
   const { trips, findTripByPlateForGate, findTripBySalesNoForGate, checkInGate, checkOutGate, reload } = useTrips()
-  const { currentUser } = useAuth()
+  const { currentUser, logout } = useAuth()
+  const navigate = useNavigate()
   const editable = canOperateGate(currentUser?.role)
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login', { replace: true })
+  }
 
   const [plate, setPlate] = useState('')
   const [salesNoInput, setSalesNoInput] = useState('')
@@ -156,10 +162,18 @@ export function GateCheck() {
     <div className="flex min-h-screen flex-col bg-[#0b0b0a] text-white">
       <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3">
         <span className="grid h-7 w-7 place-items-center rounded-[6px] bg-white text-[11px] font-bold text-[#0b0b0a]">FF</span>
-        <div className="leading-[1.15]">
-          <p className="text-[13px] font-semibold">Farm Frites — Gate Check-In / Check-Out</p>
-          <p className="text-[10.5px] text-white/50">Search a truck by Plate Number or Sales No</p>
+        <div className="min-w-0 flex-1 leading-[1.15]">
+          <p className="truncate text-[13px] font-semibold">Farm Frites — Gate Check-In / Check-Out</p>
+          <p className="truncate text-[10.5px] text-white/50">Search a truck by Plate Number or Sales No</p>
         </div>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="flex shrink-0 items-center gap-1.5 rounded-md border border-white/15 px-2.5 py-1.5 text-[12px] font-medium text-white/70 hover:bg-white/10 hover:text-white"
+        >
+          <Icon name="logOut" className="h-3.5 w-3.5" />
+          Sign Out
+        </button>
       </div>
 
       {result ? (
