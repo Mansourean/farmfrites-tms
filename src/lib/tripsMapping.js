@@ -175,6 +175,15 @@ export function dbRowToTrip(row, names = {}) {
     createdSeq: row.created_at ? new Date(row.created_at).getTime() : 0,
     loadedAt: row.loaded_at,
     loadedBy: row.loaded_by,
+    // Gate check-in/out (see 0020) -- read-only here, same as loadedAt/loadedBy above; only
+    // ever written by gate_check_in/gate_check_out, never through tripPatchToDbRow. Actor
+    // *names* are denormalized straight onto the row (mirrors trip_events.actor_name) so the
+    // Gate page never needs a separate profiles lookup just to show who acted.
+    gateCheckInAt: row.gate_check_in_at,
+    gateCheckInByName: row.gate_check_in_by_name,
+    gateCheckOutAt: row.gate_check_out_at,
+    gateCheckOutByName: row.gate_check_out_by_name,
+    gateDelayReason: row.gate_delay_reason,
   }
 }
 
@@ -253,6 +262,18 @@ export function tripEventToTimelineItem(event) {
   }
   if (event.event_type === 'departed') {
     return { id: event.id, label: 'Trip departed — now In Transit', actor, timestamp: event.created_at }
+  }
+  if (event.event_type === 'gate_check_in') {
+    return { id: event.id, label: 'Checked in at gate', actor, timestamp: event.created_at }
+  }
+  if (event.event_type === 'gate_check_out') {
+    const reason = event.metadata?.delay_reason
+    return {
+      id: event.id,
+      label: reason ? `Checked out at gate — delayed: ${reason}` : 'Checked out at gate',
+      actor,
+      timestamp: event.created_at,
+    }
   }
   // Generic audit trigger (see 0013) -- covers every other status change, including plain
   // Status-dropdown edits and the automatic Planned -> Ready for Transporter transition, none

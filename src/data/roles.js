@@ -3,24 +3,30 @@ export const ROLES = {
   DISPATCHER: 'dispatcher',
   WAREHOUSE: 'warehouse',
   VIEWER: 'viewer',
+  GATE: 'gate',
 }
 
-export const ROLE_OPTIONS = [ROLES.ADMIN, ROLES.DISPATCHER, ROLES.WAREHOUSE, ROLES.VIEWER]
+export const ROLE_OPTIONS = [ROLES.ADMIN, ROLES.DISPATCHER, ROLES.WAREHOUSE, ROLES.VIEWER, ROLES.GATE]
 
 export const ROLE_LABELS = {
   [ROLES.ADMIN]: 'Administrator',
   [ROLES.DISPATCHER]: 'Dispatcher',
   [ROLES.WAREHOUSE]: 'Warehouse',
   [ROLES.VIEWER]: 'Viewer',
+  [ROLES.GATE]: 'Gate',
 }
 
 // Single source of truth for page access — both the sidebar and RoleGuard read from this,
 // so permissions can never drift between "what's shown" and "what's actually reachable".
+// /gate itself (like /warehouse/scan) is a kiosk route placed *outside* RoleGuard in App.jsx --
+// it's reachable by anyone authenticated regardless of this list, gated by the RPCs' own role
+// checks (0020) instead. Gate's entry here only decides getDefaultRoute()'s post-login target.
 export const ROLE_PAGE_ACCESS = {
   [ROLES.ADMIN]: ['/', '/customers', '/transporters', '/warehouses', '/documents', '/settings'],
   [ROLES.DISPATCHER]: ['/', '/customers', '/transporters'],
   [ROLES.WAREHOUSE]: ['/warehouses'],
   [ROLES.VIEWER]: ['/', '/customers', '/transporters', '/warehouses', '/documents'],
+  [ROLES.GATE]: ['/gate'],
 }
 
 export function canAccessPath(role, path) {

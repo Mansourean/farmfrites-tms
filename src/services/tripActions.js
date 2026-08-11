@@ -25,3 +25,19 @@ export async function markTripInTransit(tripId) {
   if (error) throw new Error(error.message)
   return data
 }
+
+// Gate workflow (see 0020): independent of trips.status -- these never move a trip through
+// the New Order -> ... -> Delivered pipeline, they only record the gate visit itself. Both
+// RPCs re-validate role/active-status server-side and enforce the 2-hour delay-reason
+// requirement themselves, not just in the UI.
+export async function gateCheckIn(tripId) {
+  const { data, error } = await supabase.rpc('gate_check_in', { p_trip_id: tripId })
+  if (error) throw new Error(error.message)
+  return data
+}
+
+export async function gateCheckOut(tripId, delayReason) {
+  const { data, error } = await supabase.rpc('gate_check_out', { p_trip_id: tripId, p_delay_reason: delayReason || null })
+  if (error) throw new Error(error.message)
+  return data
+}

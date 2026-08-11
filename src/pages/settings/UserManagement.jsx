@@ -261,6 +261,7 @@ const ROLE_ACCENTS = {
   dispatcher: '#3B82F6',
   warehouse: '#0F6B32',
   viewer: '#6F6F6D',
+  gate: '#C2410C',
 }
 
 function softBadgeStyle(accent) {

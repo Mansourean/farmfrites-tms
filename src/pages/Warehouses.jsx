@@ -41,6 +41,20 @@ export function Warehouses() {
         </Link>
       </div>
 
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface-alt p-4">
+        <div className="min-w-0">
+          <p className="text-[13px] font-semibold text-text-primary">Gate Check-In / Check-Out</p>
+          <p className="text-[12.5px] text-text-muted">Open at the gate to search a truck and record its check-in/check-out time.</p>
+        </div>
+        <Link
+          to="/gate"
+          className="flex shrink-0 items-center gap-1.5 rounded-md bg-[var(--color-ink)] px-3 py-1.5 text-[13px] font-medium text-[var(--color-ink-text)] hover:bg-[var(--color-ink-hover)]"
+        >
+          <Icon name="truck" className="h-3.5 w-3.5" />
+          Open Gate
+        </Link>
+      </div>
+
       <p className="mb-3 text-[13px] text-text-muted">
         {rows.length} confirmed/upcoming trip{rows.length === 1 ? '' : 's'}
       </p>

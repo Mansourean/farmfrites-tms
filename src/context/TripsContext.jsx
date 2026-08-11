@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { generateId } from '../utils/id'
 import { fetchMasterData } from '../services/masterData'
 import { fetchTripRows, insertTripRow, insertTripRows, updateTripRow, deleteTripRow } from '../services/tripsApi'
-import { markTripLoaded, rejectTripLoad, markTripInTransit } from '../services/tripActions'
+import { markTripLoaded, rejectTripLoad, markTripInTransit, gateCheckIn, gateCheckOut } from '../services/tripActions'
 import { dbRowToTrip, tripPatchToDbRow } from '../lib/tripsMapping'
 import { useAuth } from './AuthContext'
 
@@ -202,6 +202,53 @@ export function TripsProvider({ children }) {
     [trips],
   )
 
+  // Gate workflow (see 0020): unlike findTripByPlate/findTripBySalesNo above, deliberately NOT
+  // restricted to a status allow-list -- the gate is a physical checkpoint a trip can pass
+  // through at any non-terminal point in its life, not just while waiting_for_loading/loaded,
+  // and gate staff may also need to look up an already-completed trip. Eligibility (already
+  // checked in, already terminal, etc.) is decided from the found trip's own gate_*/status
+  // fields by the page, and enforced again server-side by gate_check_in/gate_check_out
+  // regardless of what the UI allows.
+  const findTripByPlateForGate = useCallback(
+    (plate) => {
+      const normalized = plate.trim().toUpperCase().replace(/\s+/g, '')
+      if (!normalized) return null
+      return trips.find((trip) => trip.plateNo.toUpperCase().replace(/\s+/g, '').includes(normalized))
+    },
+    [trips],
+  )
+
+  const findTripBySalesNoForGate = useCallback(
+    (salesNo) => {
+      const normalized = salesNo.trim().toUpperCase()
+      if (!normalized) return null
+      return trips.find((trip) => trip.salesNo.toUpperCase().includes(normalized))
+    },
+    [trips],
+  )
+
+  const checkInGate = useCallback(
+    async (id) => {
+      const row = await gateCheckIn(id)
+      const trip = dbRowToTrip(row, resolveNames(row))
+      setTrips((prev) => prev.map((t) => (t.id === id ? trip : t)))
+      pulseUpdated([id])
+      return trip
+    },
+    [resolveNames, pulseUpdated],
+  )
+
+  const checkOutGate = useCallback(
+    async (id, delayReason) => {
+      const row = await gateCheckOut(id, delayReason)
+      const trip = dbRowToTrip(row, resolveNames(row))
+      setTrips((prev) => prev.map((t) => (t.id === id ? trip : t)))
+      pulseUpdated([id])
+      return trip
+    },
+    [resolveNames, pulseUpdated],
+  )
+
   // Phase 3: real Supabase persistence via the mark_trip_loaded/reject_trip_load RPCs (see
   // supabase/migrations/0007_trip_loading_rpc.sql, 0008_reject_status.sql) -- the RPC is the
   // sole write path, and its own server-side checks (identity/role/active-status/trip status)
@@ -276,9 +323,13 @@ export function TripsProvider({ children }) {
       addTimelineEvent,
       findTripByPlate,
       findTripBySalesNo,
+      findTripByPlateForGate,
+      findTripBySalesNoForGate,
       markLoaded,
       rejectLoad,
       markInTransit,
+      checkInGate,
+      checkOutGate,
       setCustomFieldValue,
     }),
     [
@@ -298,9 +349,13 @@ export function TripsProvider({ children }) {
       addTimelineEvent,
       findTripByPlate,
       findTripBySalesNo,
+      findTripByPlateForGate,
+      findTripBySalesNoForGate,
       markLoaded,
       rejectLoad,
       markInTransit,
+      checkInGate,
+      checkOutGate,
       setCustomFieldValue,
     ],
   )

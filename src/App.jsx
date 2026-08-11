@@ -16,6 +16,7 @@ import { Warehouses } from './pages/Warehouses'
 import { Documents } from './pages/Documents'
 import { Settings } from './pages/Settings'
 import { WarehouseScan } from './pages/WarehouseScan'
+import { GateCheck } from './pages/GateCheck'
 import { DriverAssignment } from './pages/DriverAssignment'
 import { PrintTrip } from './pages/PrintTrip'
 import { NotFound } from './pages/NotFound'
@@ -47,6 +48,13 @@ function App() {
                       ProtectedRoute (the mark_trip_loaded/reject_trip_load RPCs and even
                       reading trips both require an authenticated session under RLS). */}
                   <Route path="/warehouse/scan" element={<WarehouseScan />} />
+                  {/* Same placement/reasoning as /warehouse/scan above -- a kiosk-style
+                      operational page (see 0020), reachable by any authenticated active user
+                      regardless of ROLE_PAGE_ACCESS, gated by the gate_check_in/gate_check_out
+                      RPCs' own role check instead. It's still the 'gate' role's post-login
+                      landing page (getDefaultRoute() in roles.js), just not RoleGuard-enforced
+                      since kiosk routes never are. */}
+                  <Route path="/gate" element={<GateCheck />} />
                 </Route>
                 <Route path="/assign/:token" element={<DriverAssignment />} />
                 <Route path="/print/trip/:id" element={<PrintTrip />} />
