@@ -59,6 +59,7 @@ export function resolveStatus(text) {
   // of any vintage still import correctly.
   if (value.includes('confirm')) return 'waiting_for_loading'
   if ((value.includes('ready') || value.includes('waiting')) && value.includes('load')) return 'waiting_for_loading'
+  if (value.includes('gate')) return 'at_gate'
   if (value.includes('load')) return 'loaded'
   if (value.includes('assignment') || value.includes('ready')) return 'ready_for_transporter'
   if (value.includes('driver')) return 'waiting_driver'

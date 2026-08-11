@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTrips } from '../context/TripsContext'
 import { useAuth } from '../context/AuthContext'
-import { supabase } from '../lib/supabase'
 import { originLabel, transporterName } from '../data/lookup'
 import { formatDateTime } from '../utils/format'
 import { Icon } from '../components/ui/Icon'
@@ -13,16 +12,21 @@ function canOperateGate(role) {
   return role === 'admin' || role === 'gate'
 }
 
-// Trip has completed a full in/out cycle -- checking in again starts a new one (see 0020: the
-// RPC overwrites these columns for the new visit, the prior cycle stays in trip_events).
+// A completed gate visit (both timestamps set) -- shown as a read-only "last visit" summary.
+// Doesn't imply the trip can be checked in again: once gate_check_in has moved status to
+// 'At Gate', it never reverts to 'Waiting for Loading' on its own (checkout, see 0021,
+// deliberately never changes status), so canCheckIn below -- not this -- decides that.
 function isCheckedOut(trip) {
   return !!trip.gateCheckInAt && !!trip.gateCheckOutAt
 }
 function isAtGate(trip) {
   return !!trip.gateCheckInAt && !trip.gateCheckOutAt
 }
+// Mirrors gate_check_in's own server-side guard exactly (see 0021): a trip can only be checked
+// in while it's Confirmed. Kept as its own status check, not derived from the gate timestamps,
+// so the button here never offers an action the RPC would just reject.
 function canCheckIn(trip) {
-  return !['delivered', 'cancelled', 'rejected'].includes(trip.status) && !isAtGate(trip)
+  return trip.status === 'waiting_for_loading'
 }
 
 function formatDuration(ms) {
@@ -43,7 +47,7 @@ function atGateList(trips) {
 }
 
 export function GateCheck() {
-  const { trips, findTripByPlateForGate, findTripBySalesNoForGate, checkInGate, checkOutGate, reload } = useTrips()
+  const { trips, findTripByPlateForGate, findTripBySalesNoForGate, checkInGate, checkOutGate } = useTrips()
   const { currentUser, logout } = useAuth()
   const navigate = useNavigate()
   const editable = canOperateGate(currentUser?.role)
@@ -71,18 +75,10 @@ export function GateCheck() {
     return () => clearInterval(id)
   }, [])
 
-  // Live updates across gate terminals/sessions (see 0020: trips added to the supabase_realtime
-  // publication for exactly this) -- reuses TripsContext's existing reload() rather than
-  // keeping a second, separate copy of trips state just for this page.
-  useEffect(() => {
-    const channel = supabase
-      .channel('gate-trips')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trips' }, () => reload())
-      .subscribe()
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [reload])
+  // Live updates across gate terminals/sessions come from TripsContext's own global Realtime
+  // subscription (see 0020/0021) -- `trips` here already reflects other sessions' check-ins/
+  // outs without this page needing a subscription of its own; the effect below just keeps the
+  // currently-selected trip in sync with that shared state.
 
   const selectTrip = (found, query) => {
     setActionError('')
@@ -279,11 +275,13 @@ export function GateCheck() {
                 className="flex w-full flex-col items-center justify-center gap-2 rounded-2xl bg-[#4F7CFF] py-8 text-[16px] font-semibold disabled:opacity-60"
               >
                 <Icon name="truck" className="h-7 w-7" strokeWidth={2.5} />
-                {submitting ? 'Checking In…' : isCheckedOut(trip) ? 'Check In Again' : 'Check In'}
+                {submitting ? 'Checking In…' : 'Check In'}
               </button>
             </div>
           ) : (
-            <p className="mt-auto pt-8 text-center text-[13px] text-white/50">This trip has already been completed and cannot be checked in.</p>
+            <p className="mt-auto pt-8 text-center text-[13px] text-white/50">
+              This trip must be Confirmed before it can be checked in at the gate (current status: {trip.status.replace(/_/g, ' ')}).
+            </p>
           )}
         </div>
       ) : (

@@ -14,6 +14,11 @@ const statusConfig = {
   planned: { label: 'New Order', color: '#475569' },
   ready_for_transporter: { label: 'Transportation Assignment', color: '#C2410C' },
   waiting_for_loading: { label: 'Confirmed', color: '#15803D' },
+  // Teal -- reuses the exact hue "New Order" used before the rectangular-badge redesign (now
+  // free), sitting visually between Confirmed's green and Loaded's purple without being
+  // confusable with any other existing status color (see 0021 -- At Gate is a real pipeline
+  // stage now, set only by gate_check_in).
+  at_gate: { label: 'At Gate', color: '#0E7490' },
   waiting_driver: { label: 'Waiting Driver', color: '#B45309' },
   loaded: { label: 'Loaded', color: '#6D28D9' },
   in_transit: { label: 'In Transit', color: '#1D4ED8' },

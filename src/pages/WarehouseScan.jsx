@@ -12,13 +12,13 @@ function normalizePlateGuess(rawText) {
   return match ? match[0] : cleaned.slice(0, 12)
 }
 
-// Operational workflow (see 0016): the trips a warehouse employee has any reason to act on --
-// eligible for Loaded/Reject ('waiting_for_loading', i.e. the transporter has already
-// submitted driver/vehicle) or In Transit ('loaded'). Newest first, matching the rest of the
-// app's default ordering.
+// Operational workflow (see 0016, extended by 0021): the trips a warehouse employee has any
+// reason to act on -- eligible for Loaded/Reject ('waiting_for_loading', i.e. the transporter
+// has already submitted driver/vehicle, or 'at_gate' once the truck has also been checked in)
+// or In Transit ('loaded'). Newest first, matching the rest of the app's default ordering.
 function upcomingTrips(trips) {
   return trips
-    .filter((t) => t.status === 'waiting_for_loading' || t.status === 'loaded')
+    .filter((t) => t.status === 'waiting_for_loading' || t.status === 'at_gate' || t.status === 'loaded')
     .sort((a, b) => b.createdSeq - a.createdSeq)
 }
 

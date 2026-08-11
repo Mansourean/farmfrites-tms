@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { generateId } from '../utils/id'
+import { supabase } from '../lib/supabase'
 import { fetchMasterData } from '../services/masterData'
 import { fetchTripRows, insertTripRow, insertTripRows, updateTripRow, deleteTripRow } from '../services/tripsApi'
 import { markTripLoaded, rejectTripLoad, markTripInTransit, gateCheckIn, gateCheckOut } from '../services/tripActions'
@@ -90,6 +91,29 @@ export function TripsProvider({ children }) {
     load()
   }, [authLoading, currentUser, load])
 
+  // Live updates (see 0020/0021): public.trips is in the supabase_realtime publication
+  // specifically so a status change from one session -- most importantly Gate Check-In, but
+  // any trip UPDATE -- is reflected here, and therefore in the Transportation Log and every
+  // other page reading from this context, without anyone needing to switch tabs or refresh.
+  // Patches the single changed row into local state directly (via the same dbRowToTrip/
+  // resolveNames path every other mutation already uses) rather than a full reload() on every
+  // event, so this stays cheap even with several trips being edited across sessions at once.
+  // Deliberately scoped to UPDATE only -- this is about propagating changes to trips already
+  // visible, not about picking up brand-new/deleted rows, which existing pages don't need live.
+  useEffect(() => {
+    if (authLoading || !currentUser) return
+    const channel = supabase
+      .channel('trips-realtime')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trips' }, (payload) => {
+        const trip = dbRowToTrip(payload.new, resolveNames(payload.new))
+        setTrips((prev) => (prev.some((t) => t.id === trip.id) ? prev.map((t) => (t.id === trip.id ? trip : t)) : prev))
+      })
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [authLoading, currentUser, resolveNames])
+
   const patchTrip = useCallback(
     (id, updater) => {
       setTrips((prev) => prev.map((trip) => (trip.id === id ? { ...trip, ...updater(trip) } : trip)))
@@ -169,18 +193,19 @@ export function TripsProvider({ children }) {
     [resolveNames, pulseUpdated, addTimelineEvent],
   )
 
-  // Operational workflow (see 0016): the warehouse scanner matches trips at the two statuses a
-  // warehouse employee actually acts on -- 'waiting_for_loading' (eligible for Loaded/Reject,
-  // i.e. the transporter has already submitted driver/vehicle) and 'loaded' (eligible for In
-  // Transit). Was 'ready_for_transporter' before mark_trip_loaded's eligibility check moved to
-  // Waiting for Loading.
+  // Operational workflow (see 0016, extended by 0021): the warehouse scanner matches trips at
+  // the three statuses a warehouse employee actually acts on -- 'waiting_for_loading' and
+  // 'at_gate' (both eligible for Loaded/Reject -- a trip can be loaded whether or not it was
+  // gate-checked-in first, see mark_trip_loaded's own matching guard) and 'loaded' (eligible
+  // for In Transit). Was 'ready_for_transporter' before mark_trip_loaded's eligibility check
+  // moved to Waiting for Loading.
   const findTripByPlate = useCallback(
     (plate) => {
       const normalized = plate.trim().toUpperCase().replace(/\s+/g, '')
       if (!normalized) return null
       return trips.find(
         (trip) =>
-          ['waiting_for_loading', 'loaded'].includes(trip.status) &&
+          ['waiting_for_loading', 'at_gate', 'loaded'].includes(trip.status) &&
           trip.plateNo.toUpperCase().replace(/\s+/g, '').includes(normalized),
       )
     },
@@ -195,7 +220,7 @@ export function TripsProvider({ children }) {
       if (!normalized) return null
       return trips.find(
         (trip) =>
-          ['waiting_for_loading', 'loaded'].includes(trip.status) &&
+          ['waiting_for_loading', 'at_gate', 'loaded'].includes(trip.status) &&
           trip.salesNo.toUpperCase().includes(normalized),
       )
     },

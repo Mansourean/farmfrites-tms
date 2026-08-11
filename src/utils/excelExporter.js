@@ -7,6 +7,7 @@ const STATUS_LABELS = {
   planned: 'New Order',
   ready_for_transporter: 'Transportation Assignment',
   waiting_for_loading: 'Confirmed',
+  at_gate: 'At Gate',
   waiting_driver: 'Waiting Driver',
   loaded: 'Loaded',
   in_transit: 'In Transit',

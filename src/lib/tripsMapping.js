@@ -29,10 +29,14 @@ export const TRIP_TYPE_FROM_DB = {
 // 0016; only UI labels differ ('Planned' displays as "New Order", 'Ready for Transporter'
 // displays as "Transportation Assignment" -- see TripStatusPill.jsx/FilterBar.jsx/
 // excelExporter.js), so no data migration was needed.
+// 'at_gate' added (see 0021): sits between Confirmed and Loaded -- set only by gate_check_in,
+// once the trip has actually been checked in at the factory gate. mark_trip_loaded/
+// reject_trip_load now accept either 'waiting_for_loading' or 'at_gate' as their source status.
 export const STATUS_TO_DB = {
   planned: 'Planned',
   ready_for_transporter: 'Ready for Transporter',
   waiting_for_loading: 'Waiting for Loading',
+  at_gate: 'At Gate',
   waiting_driver: 'Waiting Driver',
   loaded: 'Loaded',
   in_transit: 'In Transit',
@@ -44,6 +48,7 @@ export const STATUS_FROM_DB = {
   Planned: 'planned',
   'Ready for Transporter': 'ready_for_transporter',
   'Waiting for Loading': 'waiting_for_loading',
+  'At Gate': 'at_gate',
   'Waiting Driver': 'waiting_driver',
   Loaded: 'loaded',
   'In Transit': 'in_transit',
@@ -264,7 +269,7 @@ export function tripEventToTimelineItem(event) {
     return { id: event.id, label: 'Trip departed — now In Transit', actor, timestamp: event.created_at }
   }
   if (event.event_type === 'gate_check_in') {
-    return { id: event.id, label: 'Checked in at gate', actor, timestamp: event.created_at }
+    return { id: event.id, label: 'Checked in at gate — now At Gate', actor, timestamp: event.created_at }
   }
   if (event.event_type === 'gate_check_out') {
     const reason = event.metadata?.delay_reason

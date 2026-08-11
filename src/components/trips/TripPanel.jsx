@@ -577,6 +577,7 @@ export function TripPanel() {
                     <option value="planned">New Order</option>
                     <option value="ready_for_transporter">Transportation Assignment</option>
                     <option value="waiting_for_loading">Confirmed</option>
+                    <option value="at_gate">At Gate</option>
                     <option value="waiting_driver">Waiting Driver</option>
                     <option value="loaded">Loaded</option>
                     <option value="in_transit">In Transit</option>

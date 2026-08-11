@@ -6,13 +6,14 @@ import { originLabel, transporterName } from '../data/lookup'
 import { formatDate } from '../utils/format'
 
 // Operational visibility for the warehouse: what's Confirmed (driver/vehicle already
-// submitted, truck expected) and what's already Loaded (waiting to depart) -- the same two
-// statuses WarehouseScan.jsx already treats as "the warehouse's job right now" (see 0016).
-// Soonest Loading Date first (trips with no Loading Date yet sort last -- nothing to prepare
-// for yet), so the warehouse can see what's coming today/tomorrow at a glance.
+// submitted, truck expected), what's At Gate (the truck has actually arrived), and what's
+// already Loaded (waiting to depart) -- the same statuses WarehouseScan.jsx treats as "the
+// warehouse's job right now" (see 0016, extended by 0021). Soonest Loading Date first (trips
+// with no Loading Date yet sort last -- nothing to prepare for yet), so the warehouse can see
+// what's coming today/tomorrow at a glance.
 function upcomingTrips(trips) {
   return trips
-    .filter((t) => t.status === 'waiting_for_loading' || t.status === 'loaded')
+    .filter((t) => t.status === 'waiting_for_loading' || t.status === 'at_gate' || t.status === 'loaded')
     .sort((a, b) => {
       if (!a.dispatchDate && !b.dispatchDate) return b.createdSeq - a.createdSeq
       if (!a.dispatchDate) return 1
