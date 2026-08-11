@@ -93,13 +93,22 @@ export function TripsProvider({ children }) {
 
   // Live updates (see 0020/0021): public.trips is in the supabase_realtime publication
   // specifically so a status change from one session -- most importantly Gate Check-In, but
-  // any trip UPDATE -- is reflected here, and therefore in the Transportation Log and every
-  // other page reading from this context, without anyone needing to switch tabs or refresh.
-  // Patches the single changed row into local state directly (via the same dbRowToTrip/
-  // resolveNames path every other mutation already uses) rather than a full reload() on every
-  // event, so this stays cheap even with several trips being edited across sessions at once.
-  // Deliberately scoped to UPDATE only -- this is about propagating changes to trips already
-  // visible, not about picking up brand-new/deleted rows, which existing pages don't need live.
+  // any trip change -- is reflected here, and therefore in the Transportation Log, the Gate
+  // page, and every other page reading from this context, without anyone needing to switch
+  // tabs or refresh. Patches the single changed row into local state directly (via the same
+  // dbRowToTrip/resolveNames path every other mutation already uses) rather than a full
+  // reload() on every event, so this stays cheap even with several trips being edited across
+  // sessions at once.
+  // UPDATE handles the common case (a trip already visible somewhere changing status/fields).
+  // INSERT is also needed for the Gate table specifically: a brand-new trip can land directly
+  // at Confirmed with today's Loading Date (e.g. an Excel import whose sheet already has a
+  // Status/Delivery Date filled in -- see excelMapper.js's resolveStatus, which doesn't route
+  // through the New-Order-first autoReadyStatus promotion the New Trip form uses), and that
+  // row was never in local state to begin with, so an UPDATE-only subscription would never
+  // surface it live. Guards against double-adding the creating session's own optimistic
+  // createTrip()/importTrips() insert, which already pushed the same row into state locally.
+  // DELETE is deliberately not handled -- no existing page needs a row to vanish live, and
+  // trips are practically never hard-deleted once real work has happened on them.
   useEffect(() => {
     if (authLoading || !currentUser) return
     const channel = supabase
@@ -107,6 +116,10 @@ export function TripsProvider({ children }) {
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trips' }, (payload) => {
         const trip = dbRowToTrip(payload.new, resolveNames(payload.new))
         setTrips((prev) => (prev.some((t) => t.id === trip.id) ? prev.map((t) => (t.id === trip.id ? trip : t)) : prev))
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'trips' }, (payload) => {
+        const trip = dbRowToTrip(payload.new, resolveNames(payload.new))
+        setTrips((prev) => (prev.some((t) => t.id === trip.id) ? prev : [trip, ...prev]))
       })
       .subscribe()
     return () => {

@@ -303,7 +303,7 @@ export function GateCheck() {
                             {submitting ? 'Checking In…' : 'Check In'}
                           </button>
                         ) : (
-                          <span className="text-text-faint">Completed</span>
+                          <span className="rounded-md bg-surface-alt px-2.5 py-1.5 text-[12.5px] font-medium text-text-secondary">Completed</span>
                         )}
                       </td>
                     </tr>
